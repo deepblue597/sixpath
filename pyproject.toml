@@ -1,0 +1,17 @@
+[project]
+name = "sixpath"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "bcrypt>=5.0.0",
+    "fastapi>=0.128.0",
+    "jwt>=1.4.0",
+    "pwdlib>=0.3.0",
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.12.0",
+    "pyjwt>=2.10.1",
+    "sqlalchemy>=2.0.45",
+    "uvicorn>=0.40.0",
+]

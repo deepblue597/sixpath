@@ -1,0 +1,18 @@
+services:
+  db:
+    image: sqlite:3.51
+    container_name: sixpath_db
+    volumes:
+      - ./data:/database
+    networks:
+      - sixpath_network
+    healthcheck:
+      test: ["CMD", "sqlite3", "/database/sixpath.db", "SELECT 1;"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+networks:
+  sixpath_network:
+    driver: bridge

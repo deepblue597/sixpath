@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, status , Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import create_engine
-from config import get_settings
+from utils.config import get_settings
 from services.userService import UserService
 from utils.dependencies import set_user_service,  get_user_service
 from routers import users , auth

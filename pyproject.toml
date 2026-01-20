@@ -8,10 +8,12 @@ dependencies = [
     "bcrypt>=5.0.0",
     "fastapi>=0.128.0",
     "jwt>=1.4.0",
-    "pwdlib>=0.3.0",
+    "psycopg2-binary>=2.9.10",
+    "pwdlib[argon2]>=0.3.0",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.12.0",
     "pyjwt>=2.10.1",
+    "python-multipart>=0.0.21",
     "sqlalchemy>=2.0.45",
     "uvicorn>=0.40.0",
 ]

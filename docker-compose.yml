@@ -1,17 +1,61 @@
+version: "3.8"
+
 services:
   db:
-    image: sqlite:3.51
+    image: postgres:16-alpine
     container_name: sixpath_db
+    environment:
+      POSTGRES_DB: sixpath
+      POSTGRES_USER: sixpath_user
+      POSTGRES_PASSWORD: sixpath_password
     volumes:
-      - ./data:/database
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     networks:
       - sixpath_network
     healthcheck:
-      test: ["CMD", "sqlite3", "/database/sixpath.db", "SELECT 1;"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD-SHELL", "pg_isready -U sixpath_user -d sixpath"]
+      interval: 10s
+      timeout: 5s
       retries: 5
     restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sixpath_api
+    environment:
+      # Database configuration
+      DB_TYPE: postgresql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: sixpath
+      DB_USER: sixpath_user
+      DB_PASSWORD: sixpath_password
+      # JWT configuration
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-secret-key-change-in-production}
+      JWT_ALGORITHM: HS256
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      # API configuration
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    networks:
+      - sixpath_network
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    command: uvicorn api:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  postgres_data:
+    driver: local
 
 networks:
   sixpath_network:

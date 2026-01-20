@@ -9,12 +9,18 @@ from functools import lru_cache
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
     
-    # Database settings
+    # Database type: 'sqlite' or 'postgresql'
+    db_type: str = "postgresql"
+    
+    # SQLite settings
+    sqlite_db_path: str = "./data/sixpath.db"
+    
+    # PostgreSQL settings
     db_host: str = "localhost"
     db_port: int = 5432
-    db_name: str = "gis"
-    db_user: str = "gis"
-    db_password: str = "password"
+    db_name: str = "sixpath"
+    db_user: str = "sixpath_user"
+    db_password: str = "sixpath_password"
     
     
     # API settings
@@ -34,8 +40,11 @@ class Settings(BaseSettings):
     
     @property
     def database_url(self) -> str:
-        """Construct PostgreSQL database URL."""
-        return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
+        """Construct database URL based on db_type."""
+        if self.db_type.lower() == "sqlite":
+            return f"sqlite:///{self.sqlite_db_path}"
+        else:  # postgresql
+            return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
 
 
 @lru_cache()

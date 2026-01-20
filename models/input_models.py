@@ -13,13 +13,13 @@ class UserBase(BaseModel):
     when_i_met_them: str | None = None
     notes: str | None = None
     
-# Creation of the User of the app
+# Creation of the User of the app (the authenticated owner)
 class AccountCreate(UserBase):
     username: str
-    password_hash: str
-    is_me: bool = False
+    password: str  # Plain text password (will be hashed in service layer)
+    is_me: bool = True  # Always true for the account owner
 
-# Model for creating a new user
+# Model for creating a connection/contact (people in your network)
 class UserCreate(UserBase):
     pass
     

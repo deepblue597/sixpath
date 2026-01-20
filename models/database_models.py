@@ -1,5 +1,6 @@
+from datetime import date
 from typing import Optional
-from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, Date, Text, Numeric
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, Date, Text, Numeric
 from sqlalchemy.sql import func
 from sqlalchemy.orm import declarative_base , Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import JSONB
@@ -12,22 +13,21 @@ class UserModel(Base):
 
     id : Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     first_name: Mapped[str]
-    last_name: Mapped[str] 
+    last_name: Mapped[str]
     company: Mapped[Optional[str]]
     sector: Mapped[Optional[str]]
-    is_me : Mapped[int] = mapped_column(default=0)  # 0 for false,
+    is_me: Mapped[bool] = mapped_column(Boolean, default=False)  # True = authenticated app owner, False = connection/contact
     email: Mapped[Optional[str]]
     phone: Mapped[Optional[str]]
     linkedin_url: Mapped[Optional[str]]
-    how_i_know_them : Mapped[Optional[Text]]  # "Met at conference", "College friend", etc.
-    when_i_met_them : Mapped[Optional[Date]]
-    notes : Mapped[Optional[Text]]
-    created_at : Mapped[DateTime] = mapped_column(DateTime(timezone=True), default_factory=func.now , nullable=False)
-    updated_at : Mapped[Optional[DateTime]] = mapped_column(DateTime(timezone=True), onupdate=func.now , nullable=True)
-    
+    how_i_know_them: Mapped[Optional[str]]  # Use Python type str
+    when_i_met_them: Mapped[Optional[date]] = mapped_column(Date, nullable=True)  # Use Python date type
+    notes: Mapped[Optional[str]]  # Use Python type str
+    created_at: Mapped[str] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
+    updated_at: Mapped[Optional[str]] = mapped_column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
     # Authentication fields (only populated for is_me=1)
     username: Mapped[Optional[str]]
-    password_hash : Mapped[Optional[str]]
+    password: Mapped[Optional[str]]
     
 
 

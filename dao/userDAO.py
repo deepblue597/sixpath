@@ -88,3 +88,19 @@ class UserDAO:
         except Exception as e:
             logger.error(f"Error retrieving user by username {username}: {e}")
             return None
+    
+    # def get_user_connections(self, owner_id: int, limit: int, offset: int) -> list[UserModel]:
+    #     """Get all connections/contacts owned by a specific user."""
+    #     try:
+    #         with Session(self.engine) as session:
+    #             connections = (
+    #                 session.query(UserModel)
+    #                 .filter(UserModel.owner_id == owner_id, UserModel.is_me == False)
+    #                 .limit(limit)
+    #                 .offset(offset)
+    #                 .all()
+    #             )
+    #             return connections
+    #     except Exception as e:
+    #         logger.error(f"Error retrieving connections for user {owner_id}: {e}")
+    #         return []

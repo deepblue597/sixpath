@@ -1,10 +1,11 @@
+-- Active: 1768906111731@@127.0.0.1@5432@sixpath
 CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
     company TEXT,
     sector TEXT,
-    is_me BOOLEAN DEFAULT 0, -- 0 for false, 1 for true
+    is_me BOOLEAN DEFAULT FALSE, -- 0 = connection/contact, 1 = authenticated app owner
     -- only for is_me = 1
     username TEXT UNIQUE,
     password TEXT,
@@ -14,13 +15,13 @@ CREATE TABLE IF NOT EXISTS users (
     how_i_know_them TEXT,  -- "Met at conference", "College friend", etc.
     when_i_met_them DATE,
     notes TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Connections between people (bidirectional relationships)
 CREATE TABLE IF NOT EXISTS connections (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     person1_id INTEGER NOT NULL,
     person2_id INTEGER NOT NULL,
     relationship TEXT,  -- "friend", "colleague", "mentor", "client", etc.
@@ -37,7 +38,7 @@ CREATE TABLE IF NOT EXISTS connections (
 
 -- Referrals (linked to people who referred you)
 CREATE TABLE IF NOT EXISTS referrals (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     referrer_id INTEGER NOT NULL,  -- Person who referred you
     company TEXT NOT NULL,
     position TEXT,
@@ -59,3 +60,5 @@ CREATE INDEX IF NOT EXISTS idx_connections_person1 ON connections(person1_id);
 CREATE INDEX IF NOT EXISTS idx_connections_person2 ON connections(person2_id);
 
 CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id);
+
+DROP TABLE IF EXISTS users;

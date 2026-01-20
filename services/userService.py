@@ -14,9 +14,9 @@ pwd_context = PasswordHash((
 
 logger = logging.getLogger(__name__)
 
-UPDATEBLE_FIELDS = {'first_name', 'last_name', 'email', 'company', 'username',
-                    'sector', 'phone', 'linkedin_url', 'how_i_know_them', 
-                    'when_i_met_them', 'notes'}
+# UPDATEBLE_FIELDS = {'first_name', 'last_name', 'email', 'company', 'username',
+#                     'sector', 'phone', 'linkedin_url', 'how_i_know_them', 
+#                     'when_i_met_them', 'notes'}
 
 class UserService:
     
@@ -30,7 +30,16 @@ class UserService:
         return None
     
     def create_user(self, user_create: UserCreate) -> Optional[UserResponse]:
+        """Create a new contact/connection in the network.
+        
+        Args:
+            user_create: Contact data
+            current_user_id: ID of the authenticated user creating this contact
+        """
         user_data = user_create.model_dump()
+        # Set owner_id to current authenticated user if not already set
+        # if current_user_id and 'owner_id' not in user_data:
+        #     user_data['owner_id'] = current_user_id
         new_user = self.user_dao.create_user(user_data)
         if new_user:
             return UserResponse.model_validate(new_user)
@@ -40,9 +49,9 @@ class UserService:
     
     def register_user(self, user_create: AccountCreate) -> Optional[UserResponse]:
         # New user registration with password hashing
-        password_hash = pwd_context.hash(user_create.password_hash)
-        user_create.password_hash = password_hash
-        user_data = user_create.model_dump()
+        user_data = user_create.model_dump(exclude={'password'})
+        user_data['password'] = pwd_context.hash(user_create.password)
+        user_data['is_me'] = True  # Ensure this is set for the account owner
         new_user = self.user_dao.create_user(user_data)
         if new_user:
             return UserResponse.model_validate(new_user)
@@ -50,12 +59,12 @@ class UserService:
     
     def verify_user_password(self, username: str, password: str) -> Optional[UserResponse]:
         user = self.user_dao.get_by_username(username)
-        if user and pwd_context.verify(password, user.password):
+        if user and user.password and pwd_context.verify(password, user.password):
             return user
         return None
     
     def update_user(self, user_id: int, user_update: UserUpdate) -> Optional[UserResponse]:
-        user_data = {k: v for k, v in user_update.model_dump().items() if v is not None and k in UPDATEBLE_FIELDS}
+        user_data = user_update.model_dump(exclude_unset=True, exclude_none=True) # Only include fields that are set and not None
         updated_user = self.user_dao.update_user(user_id, user_data)
         if updated_user:
             return UserResponse.model_validate(updated_user)
@@ -67,3 +76,17 @@ class UserService:
     def get_users(self, limit: int = 100, offset: int = 0) -> list[UserResponse]:
         users = self.user_dao.get_users(limit, offset)
         return [UserResponse.model_validate(user) for user in users]
+    
+    # def get_user_connections(self, owner_id: int, limit: int = 100, offset: int = 0) -> list[UserResponse]:
+    #     """Get all connections/contacts for a specific authenticated user."""
+    #     connections = self.user_dao.get_user_connections(owner_id, limit, offset)
+    #     return [UserResponse.model_validate(conn) for conn in connections]
+    
+    def change_user_password(self, user_id: int, new_password: str) -> bool:
+        user = self.user_dao.get_user_by_id(user_id)
+        if not user:
+            return False
+        new_password_hash = pwd_context.hash(new_password)
+        update_data = {'password': new_password_hash}
+        updated_user = self.user_dao.update_user(user_id, update_data)
+        return updated_user is not None

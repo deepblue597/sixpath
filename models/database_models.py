@@ -31,19 +31,19 @@ class UserModel(Base):
     
 
 
-# class ConnectionModel(Base):
-#     __tablename__ = 'connections'
+class ConnectionModel(Base):
+    __tablename__ = 'connections'
 
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#     person1_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-#     person2_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-#     relationship: Mapped[str] nullable=True)  # e.g., "colleague", "friend", etc.
-#     strength = Column(Numeric, nullable=True)  
-#     context = Mapped[Optional[Text]]  # Additional context as JSON
-#     last_interaction = Column(DateTime(timezone=True), nullable=True)
-#     notes = Mapped[Optional[Text]]
-#     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-#     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
+    id : Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    person1_id : Mapped[int] = mapped_column(ForeignKey('users.id'), nullable=False)    #= Column(Integer, ForeignKey('users.id'), nullable=False)
+    person2_id: Mapped[int] = mapped_column(ForeignKey('users.id'), nullable=False)  #= Column(Integer, ForeignKey('users.id'), nullable=False)
+    relationship: Mapped[Optional[str]]  # e.g., "colleague", "friend", etc.
+    strength: Mapped[Optional[int]]  #= Column(Numeric, nullable=True)  
+    context: Mapped[Optional[str]]  # Additional context as JSON
+    last_interaction: Mapped[Optional[str]] = mapped_column(DateTime(timezone=True), nullable=True) #Column(DateTime(timezone=True), nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[str] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False) #= Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[Optional[str]] = mapped_column(DateTime(timezone=True), onupdate=func.now(), nullable=True)#= Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
     
 # class ReferralModel(Base):
 #     __tablename__ = 'referrals'

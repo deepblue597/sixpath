@@ -1,5 +1,5 @@
 """
-Router for user READ operations (GET endpoints).
+Router for user operations.
 """
 from fastapi import HTTPException, status, APIRouter, Depends
 from typing import List

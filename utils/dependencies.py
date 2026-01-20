@@ -8,10 +8,11 @@ from utils.oath2 import verify_access_token, oauth2_scheme
 
 if TYPE_CHECKING:
     from services.userService import UserService
+    from services.connectionService import ConnectionService
 
 # This will be set by the lifespan context manager in api.py
 _user_service: 'UserService | None' = None
-
+_connection_service: 'ConnectionService | None' = None
 
 
 def set_user_service(service: 'UserService') -> None:
@@ -41,6 +42,31 @@ def get_user_service() -> 'UserService':
         raise HTTPException(status_code=500, detail="Service not initialized")
     return _user_service
 
+
+def set_connection_service(service: 'ConnectionService') -> None:
+    """
+    Set the connection service instance (called from lifespan in api.py).
+    
+    Args:
+        service: ConnectionService instance to be used across the application
+    """
+    global _connection_service
+    _connection_service = service
+    
+def get_connection_service() -> 'ConnectionService':
+    """
+    Dependency to get connection service.
+    Use this in route handlers with Depends(get_connection_service).
+    
+    Returns:
+        ConnectionService instance
+        
+    Raises:
+        HTTPException: If service is not initialized
+    """
+    if _connection_service is None:
+        raise HTTPException(status_code=500, detail="Service not initialized")
+    return _connection_service
 
 def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
     """

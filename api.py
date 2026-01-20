@@ -6,10 +6,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, status , Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import create_engine
+from services.connectionService import ConnectionService
 from utils.config import get_settings
 from services.userService import UserService
-from utils.dependencies import set_user_service,  get_user_service
-from routers import users , auth
+from utils.dependencies import set_user_service,  get_user_service, set_connection_service , get_connection_service
+from routers import users , auth, connections
 import time
 
 
@@ -34,10 +35,12 @@ async def lifespan(app: FastAPI):
 
     # Initialize services
     user_service = UserService(engine=postgres_engine)
-
+    connetion_service = ConnectionService(engine=postgres_engine)
     
     # Set services in dependencies module for injection
     set_user_service(user_service)
+    
+    set_connection_service(connetion_service)
     
     print("✅ DAO factories and services initialized")
     
@@ -62,7 +65,7 @@ app = FastAPI(
 # Include all routers
 app.include_router(auth.router)       # /auth/* endpoints
 app.include_router(users.router)      # /users/* endpoints
-
+app.include_router(connections.router)      # /connections/* endpoints
 
 
 # Middleware to log request processing time

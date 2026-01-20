@@ -20,3 +20,15 @@ class TokenData(BaseModel):
     id: int | None = None
     email: str | None = None
     role: str | None = None
+    
+class ConnectionResponse(BaseModel):
+    id: int
+    person1_id: int
+    person2_id: int
+    relationship: str | None = None
+    strength: float | None = None
+    context: str | None = None
+    last_interaction: str | None = None
+    notes: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)

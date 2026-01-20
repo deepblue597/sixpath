@@ -36,3 +36,24 @@ class UserUpdate(BaseModel):
     how_i_know_them: str | None = None
     when_i_met_them: str | None = None
     notes: str | None = None
+
+
+class ConnectionBase(BaseModel):
+    person1_id: int
+    person2_id: int
+    relationship: str | None = None  # e.g., "colleague", "friend", etc.
+    strength: float | None = None  # e.g., strength of the connection
+    context: str | None = None  # Additional context as JSON
+    last_interaction: str | None = None  # ISO formatted date string
+    notes: str | None = None
+    
+class ConnectionCreate(ConnectionBase):
+    pass
+
+class ConnectionUpdate(BaseModel):
+    relationship: str | None = None
+    strength: float | None = None
+    context: str | None = None
+    last_interaction: str | None = None
+    notes: str | None = None
+    

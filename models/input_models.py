@@ -56,4 +56,24 @@ class ConnectionUpdate(BaseModel):
     context: str | None = None
     last_interaction: str | None = None
     notes: str | None = None
+
+class ReferralBase(BaseModel):
+    referrer_id: int
+    company: str | None = None
+    position: str | None = None
+    application_date: str | None = None  # ISO formatted date string
+    interview_date: str | None = None  # ISO formatted date string
+    status: str | None = None  # e.g., "pending", "accepted", "rejected"
+    notes: str | None = None
+    
+class ReferralCreate(ReferralBase):
+    pass
+
+class ReferralUpdate(BaseModel):
+    company: str | None = None
+    position: str | None = None
+    application_date: str | None = None  # ISO formatted date string
+    interview_date: str | None = None  # ISO formatted date string
+    status: str | None = None
+    notes: str | None = None
     

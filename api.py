@@ -9,8 +9,9 @@ from sqlalchemy import create_engine
 from services.connectionService import ConnectionService
 from utils.config import get_settings
 from services.userService import UserService
-from utils.dependencies import set_user_service,  get_user_service, set_connection_service , get_connection_service
-from routers import users , auth, connections
+from services.referralService import ReferralService
+from utils.dependencies import set_user_service,  get_user_service, set_connection_service , set_referral_service
+from routers import users , auth, connections , referrals
 import time
 
 
@@ -36,11 +37,14 @@ async def lifespan(app: FastAPI):
     # Initialize services
     user_service = UserService(engine=postgres_engine)
     connetion_service = ConnectionService(engine=postgres_engine)
+    referral_service = ReferralService(engine=postgres_engine)
     
     # Set services in dependencies module for injection
     set_user_service(user_service)
     
     set_connection_service(connetion_service)
+    
+    set_referral_service(referral_service)
     
     print("✅ DAO factories and services initialized")
     
@@ -66,7 +70,7 @@ app = FastAPI(
 app.include_router(auth.router)       # /auth/* endpoints
 app.include_router(users.router)      # /users/* endpoints
 app.include_router(connections.router)      # /connections/* endpoints
-
+app.include_router(referrals.router)      # /referrals/* endpoints
 
 # Middleware to log request processing time
 @app.middleware("http")

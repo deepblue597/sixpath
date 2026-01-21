@@ -9,10 +9,12 @@ from utils.oath2 import verify_access_token, oauth2_scheme
 if TYPE_CHECKING:
     from services.userService import UserService
     from services.connectionService import ConnectionService
+    from services.referralService import ReferralService
 
 # This will be set by the lifespan context manager in api.py
 _user_service: 'UserService | None' = None
 _connection_service: 'ConnectionService | None' = None
+_referral_service: 'ReferralService | None' = None
 
 
 def set_user_service(service: 'UserService') -> None:
@@ -67,6 +69,32 @@ def get_connection_service() -> 'ConnectionService':
     if _connection_service is None:
         raise HTTPException(status_code=500, detail="Service not initialized")
     return _connection_service
+
+
+def set_referral_service(service: 'ReferralService') -> None:
+    """
+    Set the referral service instance (called from lifespan in api.py).
+    
+    Args:
+        service: ReferralService instance to be used across the application
+    """
+    global _referral_service
+    _referral_service = service
+
+def get_referral_service() -> 'ReferralService':
+    """
+    Dependency to get referral service.
+    Use this in route handlers with Depends(get_referral_service).
+    
+    Returns:
+        ReferralService instance
+        
+    Raises:
+        HTTPException: If service is not initialized
+    """
+    if _referral_service is None:
+        raise HTTPException(status_code=500, detail="Service not initialized")
+    return _referral_service
 
 def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
     """

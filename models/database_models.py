@@ -45,18 +45,17 @@ class ConnectionModel(Base):
     created_at: Mapped[str] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False) #= Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[Optional[str]] = mapped_column(DateTime(timezone=True), onupdate=func.now(), nullable=True)#= Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
     
-# class ReferralModel(Base):
-#     __tablename__ = 'referrals'
 
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#     referrer_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-#     company: Mapped[str] nullable=True)
-#     position: Mapped[str] nullable=True)
-#     application_date = Column(Date, nullable=True)
-#     interview_date = Column(Date, nullable=True)
-#     status: Mapped[str] nullable=True)  # e.g., "pending", "accepted", "rejected"
-#     notes = Mapped[Optional[Text]]
-#     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-#     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
-    
-# # Additional models can be defined here as needed
+class ReferralModel(Base):
+    __tablename__ = 'referrals'
+
+    id : Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    referrer_id : Mapped[int] = mapped_column(ForeignKey('users.id'), nullable=False)
+    company: Mapped[Optional[str]]  # nullable=True)
+    position: Mapped[Optional[str]]  # nullable=True)
+    application_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)  # Use Python date type
+    interview_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)  # Use Python date type
+    status: Mapped[Optional[str]]  # e.g., "pending", "accepted", "rejected"
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[str] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
+    updated_at: Mapped[Optional[str]] = mapped_column(DateTime(timezone=True), onupdate=func.now(), nullable=True)

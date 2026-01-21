@@ -1,7 +1,7 @@
 from pydantic import ConfigDict
 from models.input_models import UserBase
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, date
 
 class UserResponse(UserBase):
     id: int
@@ -27,9 +27,9 @@ class ConnectionResponse(BaseModel):
     person1_id: int
     person2_id: int
     relationship: str | None = None
-    strength: float | None = None
+    strength: int | None = None
     context: str | None = None
-    last_interaction: str | None = None
+    last_interaction: datetime | date | str | None = None
     notes: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -39,8 +39,8 @@ class ReferralResponse(BaseModel):
     referrer_id: int
     company: str | None = None
     position: str | None = None
-    application_date: str | None = None
-    interview_date: str | None = None
+    application_date: date | None = None
+    interview_date: date | None = None
     status: str | None = None
     notes: str | None = None
     created_at: datetime

@@ -2,9 +2,10 @@
 Login Page for SixPaths
 Handles user authentication and session initialization
 """
+import os
 import streamlit as st
-from utils.styling import apply_custom_css
-from api.api_client import get_api_client
+from styling import apply_custom_css
+from services.auth_service import authenticate
 
 # Page configuration
 st.set_page_config(
@@ -23,7 +24,7 @@ if 'login_attempts' not in st.session_state:
 
 # If already logged in, redirect to main page
 if st.session_state.logged_in:
-    st.switch_page("streamlit_app.py")
+    st.switch_page("pages/02_Dashboard.py")
 
 # Login page UI
 st.markdown("""
@@ -72,42 +73,54 @@ with col2:
     
     # Handle form submission
     if submit_button:
-        # Authenticate with FastAPI backend
-        if username and password:
-            api_client = get_api_client()
-            
-            # Try to login
-            result = api_client.login(username, password)
-            
-            if result and result.get('access_token'):
-                # Store token and login state
-                st.session_state.token = result['access_token']
+        # Basic validation
+        if not username or not password:
+            st.warning("⚠️ Please enter both username and password")
+        else:
+            api_base = None
+            try:
+                api_base = st.secrets.get("API_BASE_URL")
+            except Exception:
+                api_base = os.getenv("API_BASE_URL")
+
+            with st.spinner("Authenticating..."):
+                result = authenticate(username, password, api_base_url=api_base, timeout=6)
+
+            if isinstance(result, dict) and result.get("access_token"):
+                token = result.get("access_token")
+                st.session_state.token = token
                 st.session_state.logged_in = True
                 st.session_state.username = username
                 st.session_state.login_attempts = 0
-                
-                # Fetch user data from backend
-                user_data = api_client.get_current_user()
-                if user_data:
-                    st.session_state.user_data = user_data
-                    st.session_state.user_id = user_data.get('id')
-                
-                # Fetch connections and referrals with enriched user data
-                st.session_state.connections = api_client.get_my_connections_with_users()
-                st.session_state.referrals = api_client.get_my_referrals_with_users()
-                
+
                 st.success(f"✅ Welcome back, {username}!")
                 st.balloons()
-                
-                # Small delay before redirect
                 import time
                 time.sleep(1)
-                st.switch_page("streamlit_app.py")
+                # fetch current user profile and cache connections/referrals
+                api_base = api_base or (st.secrets.get("API_BASE_URL") if hasattr(st, "secrets") else os.getenv("API_BASE_URL"))
+                try:
+                    import requests
+                    headers = {"Authorization": f"Bearer {token}"}
+                    me_url = (api_base or os.getenv("API_BASE_URL", "http://localhost:8000")).rstrip("/") + "/users/me"
+                    resp = requests.get(me_url, headers=headers, timeout=6)
+                    if resp.status_code == 200:
+                        st.session_state.user_data = resp.json()
+                        # preload connections and referrals placeholders (pages will fetch on demand)
+                        st.session_state._connections = None
+                        st.session_state.referrals = None
+                except Exception:
+                    # ignore errors here; pages will surface diagnostics
+                    pass
+                st.switch_page("pages/02_Dashboard.py")
             else:
                 st.session_state.login_attempts += 1
-                st.error("❌ Invalid credentials. Please check your email and password.")
-        else:
-            st.warning("⚠️ Please enter both username (email) and password")
+                err = None
+                if isinstance(result, dict):
+                    err = result.get("error")
+                if not err:
+                    err = "Invalid credentials or server error"
+                st.error(f"❌ Login failed: {err}")
     
     if guest_button:
         # Guest login disabled - requires backend authentication

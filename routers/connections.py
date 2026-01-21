@@ -7,6 +7,7 @@ from models.response_models import ConnectionResponse
 from utils.dependencies import get_connection_service, get_current_user
 from services.connectionService import ConnectionService
 from models.input_models import  ConnectionCreate , ConnectionUpdate
+from sqlalchemy.exc import IntegrityError
 
 router = APIRouter(prefix="/connections", tags=["connections"])
 
@@ -108,11 +109,18 @@ async def update_connection(
     Raises:
         HTTPException: If connection not found
     """
-    updated_connection = connection_service.update_connection(connection_id, connection_update)
-    if not updated_connection:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connection not found")
-    
-    return updated_connection
+    try:
+        updated_connection = connection_service.update_connection(connection_id, connection_update)
+        if not updated_connection:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connection not found")
+        return updated_connection
+    except HTTPException:
+        raise
+    except IntegrityError as ie:
+        # Database constraint violation (e.g., strength check)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid data: {str(ie.orig) if hasattr(ie, 'orig') else str(ie)}")
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error updating connection: {str(e)}")
 
 @router.get("/user/{user_id}", response_model=List[ConnectionResponse], status_code=status.HTTP_200_OK)
 async def get_connections_for_user(

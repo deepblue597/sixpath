@@ -82,6 +82,7 @@ async def delete_connection(
     Raises:
         HTTPException: If deletion fails
     """
+    #Route layer: Uses the boolean to either return 204 (success) or raise an HTTPException (failure), but doesn't pass the boolean to the client.
     success = connection_service.delete_connection(connection_id)
     if not success:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to delete connection")

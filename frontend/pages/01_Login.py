@@ -5,7 +5,7 @@ Handles user authentication and session initialization
 import os
 import streamlit as st
 from styling import apply_custom_css
-from services.auth_service import authenticate
+from api.api_call import AuthUserService, APIClient
 
 # Page configuration
 st.set_page_config(
@@ -15,6 +15,20 @@ st.set_page_config(
 )
 
 apply_custom_css()
+
+@st.cache_resource()
+def get_api_services():
+    api_base = None
+    try:
+        api_base = st.secrets.get("API_BASE_URL")
+    except Exception:
+        api_base = os.getenv("API_BASE_URL", "http://localhost:8000")
+        
+    api_client = APIClient(base_url=api_base)
+    auth_service = AuthUserService(api_client)
+    return api_client, auth_service
+
+api_client, auth_service = get_api_services()
 
 # Initialize session state
 if 'logged_in' not in st.session_state:
@@ -63,13 +77,8 @@ with col2:
             placeholder="Enter your password"
         )
         
-        col_btn1, col_btn2 = st.columns(2)
-        
-        with col_btn1:
-            submit_button = st.form_submit_button("Login", use_container_width=True)
-        
-        with col_btn2:
-            guest_button = st.form_submit_button("Guest Login", use_container_width=True)
+
+        submit_button = st.form_submit_button("Login", use_container_width=True)
     
     # Handle form submission
     if submit_button:
@@ -77,54 +86,61 @@ with col2:
         if not username or not password:
             st.warning("⚠️ Please enter both username and password")
         else:
-            api_base = None
-            try:
-                api_base = st.secrets.get("API_BASE_URL")
-            except Exception:
-                api_base = os.getenv("API_BASE_URL")
+            # api_base = None
+            # try:
+            #     api_base = st.secrets.get("API_BASE_URL")
+            # except Exception:
+            #     api_base = os.getenv("API_BASE_URL")
 
             with st.spinner("Authenticating..."):
-                result = authenticate(username, password, api_base_url=api_base, timeout=6)
-
-            if isinstance(result, dict) and result.get("access_token"):
-                token = result.get("access_token")
-                st.session_state.token = token
-                st.session_state.logged_in = True
-                st.session_state.username = username
-                st.session_state.login_attempts = 0
-
-                st.success(f"✅ Welcome back, {username}!")
-                st.balloons()
-                import time
-                time.sleep(1)
-                # fetch current user profile and cache connections/referrals
-                api_base = api_base or (st.secrets.get("API_BASE_URL") if hasattr(st, "secrets") else os.getenv("API_BASE_URL"))
                 try:
-                    import requests
-                    headers = {"Authorization": f"Bearer {token}"}
-                    me_url = (api_base or os.getenv("API_BASE_URL", "http://localhost:8000")).rstrip("/") + "/users/me"
-                    resp = requests.get(me_url, headers=headers, timeout=6)
-                    if resp.status_code == 200:
-                        st.session_state.user_data = resp.json()
-                        # preload connections and referrals placeholders (pages will fetch on demand)
-                        st.session_state._connections = None
-                        st.session_state.referrals = None
-                except Exception:
-                    # ignore errors here; pages will surface diagnostics
-                    pass
-                st.switch_page("pages/02_Dashboard.py")
-            else:
-                st.session_state.login_attempts += 1
-                err = None
-                if isinstance(result, dict):
-                    err = result.get("error")
-                if not err:
-                    err = "Invalid credentials or server error"
-                st.error(f"❌ Login failed: {err}")
+                    result = auth_service.login(username, password)
+                    
+                    if result and result.get("access_token"):
+                        token = result.get("access_token")
+                        
+                        # ensure token is a concrete string for the API client
+                        if token is None:
+                            raise ValueError("Authentication succeeded but no access token was returned")
+                        token = str(token)
+                        
+                        api_client.set_token(token)
+                        # Update session state
+                        st.session_state.token = token
+                        st.session_state.logged_in = True
+                        st.session_state.username = username
+                        st.session_state.login_attempts = 0
+                        
+                        st.success(f"✅ Welcome back, {username}!")
+                        #st.balloons()
+                        
+                        import time
+                        time.sleep(1)
+
+                        # fetch current user profile and cache connections/referrals
+                        try:
+                            user_data = auth_service.get_current_user()
+                            st.session_state.user_data = user_data
+                            # preload connections and referrals placeholders (pages will fetch on demand)
+                            st.session_state._connections = None
+                            st.session_state.referrals = None
+                        except Exception as e:
+                            st.error(f"❌ Failed to fetch user profile: {str(e)}")
+                            
+                        st.switch_page("pages/02_Dashboard.py")
+                    else:
+                        st.session_state.login_attempts += 1
+                        err = None
+                        if isinstance(result, dict):
+                            err = result.get("error")
+                        if not err:
+                            err = "Invalid credentials or server error"
+                        st.error(f"❌ Login failed: {err}")
+                except Exception as e:
+                    st.session_state.login_attempts += 1
+                    st.error(f"❌ Login failed: {str(e)}")
+                            
     
-    if guest_button:
-        # Guest login disabled - requires backend authentication
-        st.warning("⚠️ Guest login is disabled. Please use your credentials or contact admin for demo access.")
     
     st.markdown("</div>", unsafe_allow_html=True)
     

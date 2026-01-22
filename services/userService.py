@@ -69,7 +69,7 @@ class UserService:
         if updated_user:
             return UserResponse.model_validate(updated_user)
         return None
-    
+    # Service layer (your code): Returns bool to communicate success/failure to the route handler. This allows the route to decide how to respond based on whether the deletion worked.
     def delete_user(self, user_id: int) -> bool:
         return self.user_dao.delete_user(user_id)
     

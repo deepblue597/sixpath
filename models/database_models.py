@@ -23,6 +23,7 @@ class UserModel(Base):
     how_i_know_them: Mapped[Optional[str]]  # Use Python type str
     when_i_met_them: Mapped[Optional[date]] = mapped_column(Date, nullable=True)  # Use Python date type
     notes: Mapped[Optional[str]]  # Use Python type str
+    #TODO: change to DateTime with timezone
     created_at: Mapped[str] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
     updated_at: Mapped[Optional[str]] = mapped_column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
     # Authentication fields (only populated for is_me=1)

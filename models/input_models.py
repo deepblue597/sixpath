@@ -34,6 +34,7 @@ class UserUpdate(BaseModel):
     phone: str | None = None
     linkedin_url: str | None = None
     how_i_know_them: str | None = None
+    #TODO: change to Date type
     when_i_met_them: str | None = None
     notes: str | None = None
 

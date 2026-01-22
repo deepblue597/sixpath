@@ -53,6 +53,25 @@ class APIClient:
         response = requests.post(url, headers=final_headers, json=data)
         response.raise_for_status()
         return response.json()
+
+    def post_form(self, endpoint: str, form_data: Optional[Dict] = None, headers: Optional[Dict[str, str]] = None) -> Dict:
+        """Post form-encoded data (application/x-www-form-urlencoded)."""
+        url = f"{self.base_url}/{endpoint}"
+        # Use session.post so session headers (Authorization) are preserved
+        # Let requests set the Content-Type for form data automatically.
+        req_headers = {}
+        if headers:
+            req_headers.update(headers)
+        response = self.session.post(url, headers=req_headers, data=form_data)
+        # If the response is not JSON, return text for debugging
+        try:
+            response.raise_for_status()
+            return response.json()
+        except requests.HTTPError:
+            try:
+                return {"status_code": response.status_code, "text": response.text}
+            except Exception:
+                raise
     
     def put(self, endpoint: str, data: Optional[Dict] = None, headers: Optional[Dict[str, str]] = None) -> Dict:
         url = f"{self.base_url}/{endpoint}"
@@ -98,8 +117,9 @@ class AuthUserService:
         self.api_client = api_client
 
     def login(self, username: str, password: str) -> Dict:
-        data = {"username": username, "password": password}
-        return self.api_client.post("auth/login", data=data)
+        # OAuth2PasswordRequestForm expects form-encoded fields: username and password
+        form = {"username": username, "password": password}
+        return self.api_client.post_form("auth/login", form_data=form)
 
     def logout(self) -> Dict:
         #headers = {"Authorization": f"Bearer {token}"}

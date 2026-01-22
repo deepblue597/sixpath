@@ -14,48 +14,16 @@ from pyvis.network import Network
 import streamlit.components.v1 as components
 from styling import apply_custom_css
 from mock_data import get_sector_color
+from api.service_locator import get_user_service, get_connection_service, get_api_client, get_auth_service
 
 st.set_page_config(page_title="Dashboard - SixPaths", page_icon="📊", layout="wide")
 apply_custom_css()
 
-def _get_api_base() -> str:
-    try:
-        return st.secrets.get("API_BASE_URL") or os.getenv("API_BASE_URL", "http://localhost:8000")
-    except Exception:
-        return os.getenv("API_BASE_URL", "http://localhost:8000")
-
-def _auth_headers(token: str) -> dict:
-    return {"Authorization": f"Bearer {token}"}
-
-def get_current_user(token: str) -> Optional[dict]:
-    url = _get_api_base().rstrip("/") + "/users/me"
-    try:
-        resp = requests.get(url, headers=_auth_headers(token), timeout=6)
-        if resp.status_code == 200:
-            return resp.json()
-    except requests.RequestException:
-        pass
-    return None
-
-def get_all_users(token: str) -> List[dict]:
-    url = _get_api_base().rstrip("/") + "/users"
-    try:
-        resp = requests.get(url, headers=_auth_headers(token), timeout=8)
-        if resp.status_code == 200:
-            return resp.json()
-    except requests.RequestException:
-        pass
-    return []
-
-def get_connections_for_user(user_id: int, token: str) -> List[dict]:
-    url = _get_api_base().rstrip("/") + f"/connections/user/{user_id}"
-    try:
-        resp = requests.get(url, headers=_auth_headers(token), timeout=8)
-        if resp.status_code == 200:
-            return resp.json()
-    except requests.RequestException:
-        pass
-    return []
+# Backend API calls
+api_client = get_api_client()
+user_service = get_user_service()
+connection_service = get_connection_service()
+auth_service = get_auth_service()
 
 if not st.session_state.get("logged_in"):
     st.warning("⚠️ Please login first")
@@ -71,10 +39,21 @@ st.title("📊 Network Dashboard")
 # Load current user and data (cached in session_state)
 if "current_user" not in st.session_state or st.button("🔄 Refresh data"):
     with st.spinner("Loading user and connections..."):
-        st.session_state.current_user = get_current_user(token)
-        st.session_state.all_users = get_all_users(token)
+        # ensure token set on API client
+        api_client.set_token(token)
+        try:
+            st.session_state.current_user = auth_service.get_current_user()
+        except Exception:
+            st.session_state.current_user = None
+        try:
+            st.session_state.all_users = user_service.get_users()
+        except Exception:
+            st.session_state.all_users = []
         if st.session_state.current_user:
-            st.session_state.connections = get_connections_for_user(st.session_state.current_user.get("id"), token)
+            try:
+                st.session_state.connections = connection_service.get_connections_of_user(int(st.session_state.current_user.get("id")))
+            except Exception:
+                st.session_state.connections = []
 
 current_user = st.session_state.get("current_user")
 all_users = st.session_state.get("all_users") or []
@@ -101,21 +80,21 @@ with st.sidebar:
     show_labels = st.checkbox("Show labels", value=True)
     physics_enabled = st.checkbox("Enable physics", value=True)
 
-    st.divider()
-    st.markdown("### 🧭 Navigation")
-    if st.button("👥 Manage Users", use_container_width=True):
-        st.switch_page("pages/update_user.py")
-    if st.button("🎯 Referrals", use_container_width=True):
-        st.switch_page("pages/03_Referrals.py")
-    if st.button("👤 My Profile", use_container_width=True):
-        st.switch_page("pages/04_Edit_Profile.py")
-    st.divider()
-    if st.button("🚪 Logout", use_container_width=True):
-        st.session_state.logged_in = False
-        st.session_state.token = None
-        st.session_state.user_data = None
-        st.session_state.connections = None
-        st.switch_page("pages/01_Login.py")
+    # st.divider()
+    # st.markdown("### 🧭 Navigation")
+    # if st.button("👥 Manage Users", use_container_width=True):
+    #     st.switch_page("pages/update_user.py")
+    # if st.button("🎯 Referrals", use_container_width=True):
+    #     st.switch_page("pages/03_Referrals.py")
+    # if st.button("👤 My Profile", use_container_width=True):
+    #     st.switch_page("pages/04_Edit_Profile.py")
+    # st.divider()
+    # if st.button("🚪 Logout", use_container_width=True):
+    #     st.session_state.logged_in = False
+    #     st.session_state.token = None
+    #     st.session_state.user_data = None
+    #     st.session_state.connections = None
+    #     st.switch_page("pages/01_Login.py")
 
 # Filter connections
 filtered_connections = [c for c in connections if (not selected_sectors or c.get('sector') in selected_sectors) and (not selected_companies or c.get('company') in selected_companies)]

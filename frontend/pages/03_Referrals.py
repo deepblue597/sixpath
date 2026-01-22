@@ -10,69 +10,13 @@ import requests
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-
+from api.service_locator import get_referral_service , get_auth_service , get_api_client
 st.set_page_config(page_title="Referrals - SixPaths", page_icon="🎯", layout="wide")
 
-def _get_api_base() -> str:
-    try:
-        return st.secrets.get("API_BASE_URL") or os.getenv("API_BASE_URL", "http://localhost:8000")
-    except Exception:
-        return os.getenv("API_BASE_URL", "http://localhost:8000")
 
-def _auth_headers(token: str) -> dict:
-    return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-
-def get_current_user_referrals(offset: int, limit: int, token: str):
-    """Return a dict with items, status, and optional text for diagnostics."""
-    url = _get_api_base().rstrip("/") + f"/referrals/me?offset={offset}&limit={limit}"
-    try:
-        headers = _auth_headers(token)
-        resp = requests.get(url, headers=headers, timeout=8)
-        try:
-            body = resp.json()
-        except Exception:
-            body = resp.text
-        return {"items": body if resp.status_code == 200 else [], "status": resp.status_code, "text": body, "url": url, "headers": {k: (v if k.lower() != 'authorization' else 'REDACTED') for k,v in headers.items()}}
-    except requests.RequestException as e:
-        return {"items": [], "status": None, "text": repr(e), "url": url, "headers": {"authorization": f"REDACTED (len={len(token) if token else 0})"}}
-
-def get_referral(referral_id: int, token: str) -> Optional[dict]:
-    url = _get_api_base().rstrip("/") + f"/referrals/{referral_id}"
-    try:
-        resp = requests.get(url, headers=_auth_headers(token), timeout=6)
-        if resp.status_code == 200:
-            return resp.json()
-    except requests.RequestException:
-        pass
-    return None
-
-def create_referral(payload: dict, token: str) -> Optional[dict]:
-    url = _get_api_base().rstrip("/") + "/referrals"
-    try:
-        resp = requests.post(url, headers=_auth_headers(token), json=payload, timeout=8)
-        if resp.status_code in (200, 201):
-            return resp.json()
-    except requests.RequestException:
-        pass
-    return None
-
-def update_referral(referral_id: int, payload: dict, token: str) -> Optional[dict]:
-    url = _get_api_base().rstrip("/") + f"/referrals/{referral_id}"
-    try:
-        resp = requests.put(url, headers=_auth_headers(token), json=payload, timeout=8)
-        if resp.status_code in (200, 201):
-            return resp.json()
-    except requests.RequestException:
-        pass
-    return None
-
-def delete_referral(referral_id: int, token: str) -> bool:
-    url = _get_api_base().rstrip("/") + f"/referrals/{referral_id}"
-    try:
-        resp = requests.delete(url, headers=_auth_headers(token), timeout=8)
-        return resp.status_code in (200, 204)
-    except requests.RequestException:
-        return False
+api_client =  get_api_client()
+referral_service = get_referral_service()
+auth_service = get_auth_service()
 
 from styling import apply_custom_css
 apply_custom_css()
@@ -100,14 +44,16 @@ if "show_referral_form" not in st.session_state:
     st.session_state.show_referral_form = False
 
 def _load_referrals():
+    # ensure token set on client
+    api_client.set_token(token)
     with st.spinner("Loading referrals..."):
-        result = get_current_user_referrals(st.session_state.referrals_offset, st.session_state.referrals_limit, token)
-    # store diagnostics
-    st.session_state._referrals_load_info = {
-        "status": result.get("status"),
-        "text": result.get("text")
-    }
-    st.session_state.referrals = result.get("items") or []
+        try:
+            result = referral_service.get_current_user_referrals(st.session_state.referrals_limit, st.session_state.referrals_offset)
+        except Exception as e:
+            st.session_state._referrals_load_info = {"error": str(e)}
+            st.session_state.referrals = []
+            return
+    st.session_state.referrals = result if isinstance(result, list) else []
 
 if st.button("Reload referrals"):
     _load_referrals()
@@ -201,8 +147,12 @@ if st.session_state.show_referral_form or st.session_state.selected_referral_id:
     editing_id = st.session_state.selected_referral_id if st.session_state.selected_referral_id else None
     editing_ref = None
     if editing_id:
+        api_client.set_token(token)
         with st.spinner("Loading referral..."):
-            editing_ref = get_referral(editing_id, token)
+            try:
+                editing_ref = referral_service.get_referral(str(editing_id))
+            except Exception:
+                editing_ref = None
 
     title = "✏️ Edit Referral" if editing_ref else "➕ Create Referral"
     st.markdown(f"### {title}")
@@ -257,7 +207,10 @@ if st.session_state.show_referral_form or st.session_state.selected_referral_id:
             }
             if editing_ref:
                 with st.spinner("Updating referral..."):
-                    res = update_referral(editing_ref.get('id'), payload, token)
+                            try:
+                                res = referral_service.update_referral(str(editing_ref.get('id')), payload)
+                            except Exception:
+                                res = None
                 if res:
                     st.success("✅ Referral updated")
                     st.session_state.show_referral_form = False
@@ -267,7 +220,10 @@ if st.session_state.show_referral_form or st.session_state.selected_referral_id:
                     st.error("❌ Failed to update referral")
             else:
                 with st.spinner("Creating referral..."):
-                    res = create_referral(payload, token)
+                            try:
+                                res = referral_service.create_referral(payload)
+                            except Exception:
+                                res = None
                 if res:
                     st.success("✅ Referral created")
                     st.session_state.show_referral_form = False
@@ -288,7 +244,10 @@ if st.session_state.selected_referral_id:
     if st.checkbox("Confirm deletion of selected referral"):
         if st.button("Delete referral"):
             with st.spinner("Deleting..."):
-                ok = delete_referral(rid, token)
+                try:
+                    ok = referral_service.delete_referral(str(rid))
+                except Exception:
+                    ok = False
             if ok:
                 st.success("✅ Referral deleted")
                 st.session_state.selected_referral_id = None

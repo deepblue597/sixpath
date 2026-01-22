@@ -5,7 +5,7 @@ Handles user authentication and session initialization
 import os
 import streamlit as st
 from styling import apply_custom_css
-from api.api_call import AuthUserService, APIClient
+from api.service_locator import get_api_client , get_auth_service 
 
 # Page configuration
 st.set_page_config(
@@ -16,19 +16,10 @@ st.set_page_config(
 
 apply_custom_css()
 
-@st.cache_resource()
-def get_api_services():
-    api_base = None
-    try:
-        api_base = st.secrets.get("API_BASE_URL")
-    except Exception:
-        api_base = os.getenv("API_BASE_URL", "http://localhost:8000")
-        
-    api_client = APIClient(base_url=api_base)
-    auth_service = AuthUserService(api_client)
-    return api_client, auth_service
 
-api_client, auth_service = get_api_services()
+
+api_client = get_api_client()
+auth_service = get_auth_service()
 
 # Initialize session state
 if 'logged_in' not in st.session_state:
@@ -86,11 +77,6 @@ with col2:
         if not username or not password:
             st.warning("⚠️ Please enter both username and password")
         else:
-            # api_base = None
-            # try:
-            #     api_base = st.secrets.get("API_BASE_URL")
-            # except Exception:
-            #     api_base = os.getenv("API_BASE_URL")
 
             with st.spinner("Authenticating..."):
                 try:
@@ -122,7 +108,7 @@ with col2:
                             user_data = auth_service.get_current_user()
                             st.session_state.user_data = user_data
                             # preload connections and referrals placeholders (pages will fetch on demand)
-                            st.session_state._connections = None
+                            st.session_state.connections = None
                             st.session_state.referrals = None
                         except Exception as e:
                             st.error(f"❌ Failed to fetch user profile: {str(e)}")

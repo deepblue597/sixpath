@@ -56,8 +56,8 @@ if "current_user" not in st.session_state or st.button("🔄 Refresh data"):
         except Exception:
             st.session_state.connections = []
 
-current_user: UserResponse = st.session_state.current_user  # type: ignore
-all_users = st.session_state.get("all_users") or []
+current_user = st.session_state.current_user  # type: ignore
+all_users = st.session_state.all_users  # type: ignore
 connections = st.session_state.get("connections") or []
 
 
@@ -106,11 +106,8 @@ for u in all_users:
     if u is None:
         continue
     # prefer storing the original object (UserResponse) so callers can use attributes
-    uid_val = None
-    if isinstance(u, dict):
-        uid_val = u.get('id')
-    else:
-        uid_val = getattr(u, 'id', None)
+
+    uid_val = u.id
 
     if uid_val is not None:
         users_by_id[str(uid_val)] = u
@@ -119,21 +116,21 @@ for u in all_users:
 net = Network(height="650px", width="100%", bgcolor="#ffffff", font_color="#222222")
 net.barnes_hut()
 
-# center node (normalize id to string)
-if isinstance(current_user, dict):
-    uid = str(current_user.get('id', ''))
-    username = current_user.get('username', '')
-    first = current_user.get('first_name', '')
-    last = current_user.get('last_name', '')
-    company = current_user.get('company', '')
-    email = current_user.get('email', '')
-else:
-    uid = str(getattr(current_user, 'id', ''))
-    username = getattr(current_user, 'username', '')
-    first = getattr(current_user, 'first_name', '')
-    last = getattr(current_user, 'last_name', '')
-    company = getattr(current_user, 'company', '')
-    email = getattr(current_user, 'email', '')
+# # center node (normalize id to string)
+# if isinstance(current_user, dict):
+#     uid = str(current_user.get('id', ''))
+#     username = current_user.get('username', '')
+#     first = current_user.get('first_name', '')
+#     last = current_user.get('last_name', '')
+#     company = current_user.get('company', '')
+#     email = current_user.get('email', '')
+# else:
+uid = str(current_user.id) 
+username = current_user.username or ''  
+first = current_user.first_name or ''
+last = current_user.last_name or ''
+company = current_user.company or ''
+email = current_user.email or ''
 
 center_label = f"{first} {last}".strip() or email
 center_title = f"<b>{center_label}</b><br/>{company}<br/>{email}"
@@ -154,25 +151,22 @@ for c in filtered_connections:
             continue
         user = users_by_id.get(endpoint)
         if user:
-            if isinstance(user, dict):
-                username = user.get('username', '')
-                first = user.get('first_name', '')
-                last = user.get('last_name', '')
-                email = user.get('email', '')
-                position = user.get('position', '')
-                company = user.get('company', '')
-                sector = user.get('sector') or c.get('sector', 'Other')
-            else:
-                username = getattr(user, 'username', '')
-                first = getattr(user, 'first_name', '')
-                last = getattr(user, 'last_name', '')
-                email = getattr(user, 'email', '')
-                position = getattr(user, 'position', '')
-                company = getattr(user, 'company', '')
-                sector = getattr(user, 'sector', None) or c.get('sector', 'Other')
+            username = getattr(user, 'username', '')
+            first = getattr(user, 'first_name', '')
+            last = getattr(user, 'last_name', '')
+            email = getattr(user, 'email', '')
+            position = getattr(user, 'position', '')
+            company = getattr(user, 'company', '')
+            sector = getattr(user, 'sector', None) or c.get('sector', 'Other')
 
             name = username or f"{first} {last}".strip() or email
-            tooltip = f"<b>{name}</b><br/>{('@' + username) if username else (position or company)}<br/>{email}"
+            # build subtitle safely (prefer @username, else position or company)
+            subtitle = ''
+            if username:
+                subtitle = '@' + username
+            else:
+                subtitle = position or company or ''
+            tooltip = f"<b>{name}</b><br/>{subtitle}<br/>{email}"
             comp = company or c.get('company') or 'Unknown'
         else:
             name = endpoint
@@ -221,29 +215,5 @@ with open(tmp_path, 'r', encoding='utf-8') as f:
 
 components.html(html, height=650, scrolling=True)
 
-# with col_side:
-#     st.markdown("### Nodes")
-#     node_list = []
-#     for node in net.nodes:
-#         nid = node.get('id')
-#         lbl = node.get('label') or str(nid)
-#         node_list.append((f"{lbl} (id:{nid})", nid))
-#     if node_list:
-#         labels = [n[0] for n in node_list]
-#         choice = st.selectbox("Select node", labels)
-#         chosen = node_list[labels.index(choice)][1]
-#         selected_user = users_by_id.get(chosen)
-#         if selected_user:
-#             st.markdown(f"**Name:** {selected_user.get('first_name','')} {selected_user.get('last_name','')}")
-#             st.markdown(f"**Company:** {selected_user.get('company','') or '—'}")
-#             st.markdown(f"**Email:** {selected_user.get('email','') or '—'}")
-#         else:
-#             st.markdown(f"**Node ID:** {chosen}")
-#         if st.button("Edit user (open Edit Connection page)"):
-#             st.session_state.selected_node_id = chosen
-#             st.switch_page("pages/05_Edit_Connection.py")
-#     else:
-#         st.info("No nodes available")
-
 st.markdown('---')
-st.markdown("Tip: Click a node in the graph to explore. Use the selector to jump to the Edit page.")
+st.markdown("Tip: Click a node in the graph to explore.")

@@ -33,14 +33,14 @@ def get_services():
     }
 
 # Convenience functions for individual services
-def get_auth_service():
+def get_auth_service() -> AuthUserService:
     return get_services()['auth']
 
-def get_user_service():
+def get_user_service() -> UserService:
     return get_services()['user']
 
-def get_connection_service():
+def get_connection_service() -> ConnectionService:
     return get_services()['connection']
 
-def  get_referral_service():
+def  get_referral_service() -> ReferralService:
     return get_services()['referral']

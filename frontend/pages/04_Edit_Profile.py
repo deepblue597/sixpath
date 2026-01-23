@@ -52,7 +52,7 @@ def _model_to_dict(obj):
     # fallback: try attribute access for common fields
     return {k: getattr(obj, k, None) for k in ("id", "first_name", "last_name", "email", "company", "sector", "phone", "linkedin_url")}
 
-current_user = _model_to_dict(current_user)
+# current_user = _model_to_dict(current_user)
 
 if not current_user:
     st.error("Failed to load current user. Please refresh or login again.")
@@ -66,7 +66,7 @@ with tabs[0]:
         with st.form("edit_my_profile"):
             col1, col2 = st.columns(2)
             with col1:
-                first_name = st.text_input("First name", value=user.get("first_name", ""))
+                first_name = st.text_input("First name", value=user.first_name or "")
                 last_name = st.text_input("Last name", value=user.get("last_name", ""))
                 email = st.text_input("Email", value=user.get("email", ""))
             with col2:

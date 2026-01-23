@@ -1,7 +1,7 @@
 # api_service.py
 import requests
 from typing import Optional, List, Dict, Any
-from .api_models import UserResponse, ConnectionResponse, ReferralResponse
+from .api_models import UserResponse, ConnectionResponse, ReferralResponse , RegisterRequest
 
 class APIClient:
     def __init__(self, base_url: str, api_key: Optional[str] = None):
@@ -154,8 +154,8 @@ class AuthUserService:
             return None
         #return self.api_client.get("users/me")
 
-    def register_user(self, user_data: Dict) -> Dict:
-        return self.api_client.post("users/register_user", data=user_data)
+    def register_user(self, user_data: RegisterRequest) -> Dict:
+        return self.api_client.post("users/register_user", data=user_data.model_dump())
     
     def change_password(self, user_id: str, new_password: str) -> Dict:
         data = {"new_password": new_password}

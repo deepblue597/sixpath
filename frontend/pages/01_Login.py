@@ -5,7 +5,7 @@ Handles user authentication and session initialization
 import os
 import time
 import streamlit as st
-from api.api_models import UserResponse
+from frontend.api.api_models import RegisterRequest
 from styling import apply_custom_css
 from api.service_locator import get_api_client , get_auth_service 
 # Page configuration
@@ -52,8 +52,7 @@ with col2:
     with st.form("login_form", clear_on_submit=False):
         username = st.text_input(
             "Username",
-            placeholder="Enter your username",
-            help="Demo credentials: demo / password"
+            placeholder="Enter your username"
         )
         
         password = st.text_input(
@@ -87,14 +86,23 @@ with col2:
                 st.error("Please provide first name, last name, username and password")
             else:
                 with st.spinner("Creating account..."):
-                    payload = {
-                        "username": ca_username,
-                        "password": ca_password,
-                        "first_name": ca_first,
-                        "last_name": ca_last,
-                        "email": ca_email or None,
-                        "is_me": True
-                    }
+                    # TODO: create classes for payloads
+                    # payload = {
+                    #     "username": ca_username,
+                    #     "password": ca_password,
+                    #     "first_name": ca_first,
+                    #     "last_name": ca_last,
+                    #     "email": ca_email or None,
+                    #     "is_me": True
+                    # }
+                    payload = RegisterRequest(
+                        username=ca_username,
+                        password=ca_password,
+                        first_name=ca_first,
+                        last_name=ca_last,
+                        email=ca_email or None,
+                        is_me=True
+                    )
                     try:
                         res = auth_service.register_user(payload)
                     except Exception as e:
@@ -162,7 +170,7 @@ with col2:
 
                         # fetch current user profile and cache connections/referrals
                         try:
-                            user_data:  UserResponse = auth_service.get_current_user()
+                            user_data = auth_service.get_current_user()
                             st.session_state.user_data = user_data
                             # preload connections and referrals placeholders (pages will fetch on demand)
                             st.session_state.connections = None

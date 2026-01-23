@@ -10,9 +10,9 @@ Backend database models: Keep using SQLAlchemy Base with Mapped
 from dataclasses import dataclass
 from datetime import datetime, date
 from typing import Optional, List
-
+from pydantic import BaseModel
 @dataclass
-class UserResponse():
+class UserResponse(BaseModel):
     id: int
     is_me: bool
     first_name: str
@@ -29,7 +29,7 @@ class UserResponse():
     notes: Optional[str] = None
     updated_at: Optional[datetime] = None
 
-class ConnectionResponse():
+class ConnectionResponse(BaseModel):
     id: int
     person1_id: int
     person2_id: int
@@ -41,7 +41,7 @@ class ConnectionResponse():
     created_at: datetime
     updated_at: Optional[datetime] = None
     
-class ReferralResponse():
+class ReferralResponse(BaseModel):
     id: int
     referrer_id: int
     company: Optional[str] = None
@@ -53,3 +53,10 @@ class ReferralResponse():
     created_at: datetime
     updated_at: Optional[datetime] = None
     
+class RegisterRequest(BaseModel):
+    first_name: str
+    last_name: str
+    username: str
+    password: str
+    email: Optional[str] = None
+    is_me: bool = True  # Always true for the account owner

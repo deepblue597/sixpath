@@ -3,10 +3,11 @@ Login Page for SixPaths
 Handles user authentication and session initialization
 """
 import os
+import time
 import streamlit as st
+from api.api_models import UserResponse
 from styling import apply_custom_css
 from api.service_locator import get_api_client , get_auth_service 
-
 # Page configuration
 st.set_page_config(
     page_title="Login - SixPaths",
@@ -43,14 +44,7 @@ st.markdown("""
 col1, col2, col3 = st.columns([1, 2, 1])
 
 with col2:
-    st.markdown("""
-    <div style="
-        background-color: white;
-        padding: 2rem;
-        border-radius: 12px;
-        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-    ">
-    """, unsafe_allow_html=True)
+
     
     st.markdown("### 🔐 Sign In")
     st.markdown("Enter your credentials to access your network")
@@ -69,7 +63,70 @@ with col2:
         )
         
 
-        submit_button = st.form_submit_button("Login", use_container_width=True)
+        submit_button = st.form_submit_button("Login", width='stretch')
+
+    # Create account toggle
+    if "show_create_account" not in st.session_state:
+        st.session_state.show_create_account = False
+    if st.button("Create account"):
+        st.session_state.show_create_account = True
+
+    if st.session_state.show_create_account:
+        st.markdown("---")
+        st.markdown("### ➕ Create Account")
+        with st.form("create_account_form"):
+            ca_first = st.text_input("First name")
+            ca_last = st.text_input("Last name")
+            ca_email = st.text_input("Email (optional)")
+            ca_username = st.text_input("Username")
+            ca_password = st.text_input("Password", type="password")
+            ca_submit = st.form_submit_button("Create Account")
+
+        if ca_submit:
+            if not ca_username or not ca_password or not ca_first or not ca_last:
+                st.error("Please provide first name, last name, username and password")
+            else:
+                with st.spinner("Creating account..."):
+                    payload = {
+                        "username": ca_username,
+                        "password": ca_password,
+                        "first_name": ca_first,
+                        "last_name": ca_last,
+                        "email": ca_email or None,
+                        "is_me": True
+                    }
+                    try:
+                        res = auth_service.register_user(payload)
+                    except Exception as e:
+                        res = None
+                        err = str(e)
+                    if res:
+                        st.success("Account created — logging in...")
+                        try:
+                            login_res = auth_service.login(ca_username, ca_password)
+                        except Exception as e:
+                            login_res = None
+                        if login_res and login_res.get("access_token"):
+                            token = str(login_res.get("access_token"))
+                            api_client.set_token(token)
+                            st.session_state.token = token
+                            st.session_state.logged_in = True
+                            st.session_state.username = ca_username
+                            st.session_state.login_attempts = 0
+                            # preload placeholders
+                            st.session_state.connections = None
+                            st.session_state.referrals = None
+                            try:
+                                params = st.experimental_get_query_params()
+                                params["_ts"] = str(int(time.time()))
+                                st.experimental_set_query_params(**params)
+                            except Exception:
+                                # fallback: set logged_in and navigate
+                                st.switch_page("pages/02_Dashboard.py")
+                        else:
+                            st.error("Account created but automatic login failed — please login manually")
+                    else:
+                        st.error(f"Failed to create account: {locals().get('err','Unknown error')}")
     
     # Handle form submission
     if submit_button:
@@ -105,7 +162,7 @@ with col2:
 
                         # fetch current user profile and cache connections/referrals
                         try:
-                            user_data = auth_service.get_current_user()
+                            user_data:  UserResponse = auth_service.get_current_user()
                             st.session_state.user_data = user_data
                             # preload connections and referrals placeholders (pages will fetch on demand)
                             st.session_state.connections = None

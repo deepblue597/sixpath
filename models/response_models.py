@@ -7,6 +7,8 @@ class UserResponse(UserBase):
     id: int
     is_me: bool
     username: str | None = None
+    created_at: datetime
+    updated_at: datetime | None = None
 
     # Pydantic v2 syntax
     model_config = ConfigDict(from_attributes=True)
@@ -31,7 +33,9 @@ class ConnectionResponse(BaseModel):
     context: str | None = None
     last_interaction: datetime | date | str | None = None
     notes: str | None = None
-
+    created_at: datetime
+    updated_at: datetime | None = None
+    
     model_config = ConfigDict(from_attributes=True)
     
 class ReferralResponse(BaseModel):

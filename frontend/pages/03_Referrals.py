@@ -10,13 +10,14 @@ import requests
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from api.service_locator import get_referral_service , get_auth_service , get_api_client
+from api.service_locator import get_referral_service , get_auth_service , get_api_client, get_user_service
 st.set_page_config(page_title="Referrals - SixPaths", page_icon="🎯", layout="wide")
 
 
 api_client =  get_api_client()
 referral_service = get_referral_service()
 auth_service = get_auth_service()
+user_service = get_user_service()
 
 from styling import apply_custom_css
 apply_custom_css()
@@ -58,7 +59,7 @@ def _load_referrals():
 if st.button("Reload referrals"):
     _load_referrals()
 
-if "referrals" not in st.session_state:
+if "referrals" not in st.session_state or st.session_state.get("referrals") is None:
     _load_referrals()
 
 cols = st.columns([3, 1, 1, 1])
@@ -97,20 +98,41 @@ filtered = _filtered(st.session_state.get('referrals') or [])
 
 st.markdown(f"### 📋 Referrals ({len(filtered)})")
 
+# build users lookup for referrer names
+users = st.session_state.get('all_users') or st.session_state.get('_users')
+if users is None:
+    try:
+        users = user_service.get_users()
+    except Exception:
+        users = []
+    st.session_state.all_users = users
+
+users_by_id = {}
+for u in users or []:
+    try:
+        uid = u.id #u.get('id') if isinstance(u, dict) else getattr(u, 'id', None)
+        first = (u.get('first_name') if isinstance(u, dict) else getattr(u, 'first_name', None)) or ''
+        last = (u.get('last_name') if isinstance(u, dict) else getattr(u, 'last_name', None)) or ''
+        email = (u.get('email') if isinstance(u, dict) else getattr(u, 'email', None)) or ''
+        display = f"{first} {last}".strip() or email or f"User {uid}"
+        users_by_id[uid] = display
+    except Exception:
+        continue
+
 if filtered:
     df = pd.DataFrame([{
         'id': r.get('id'),
-        'referrer': r.get('referrer_name'),
+        'referrer': users_by_id.get(r.get('referrer_id')) or r.get('referrer_name') or '',
         'company': r.get('company'),
         'position': r.get('position'),
         'status': r.get('status'),
         'applied': r.get('application_date')
     } for r in filtered])
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(df, width='stretch')
 
     # Selection
     ids = [r.get('id') for r in filtered]
-    labels = [f"{r.get('referrer_name')} — {r.get('position')} @ {r.get('company')} (id:{r.get('id')})" for r in filtered]
+    labels = [f"{(users_by_id.get(r.get('referrer_id')) or r.get('referrer_name'))} — {r.get('position')} @ {r.get('company')} (id:{r.get('id')})" for r in filtered]
     sel = st.selectbox("Select referral", ["-- none --"] + labels)
     if sel != "-- none --":
         idx = labels.index(sel)
@@ -160,22 +182,36 @@ if st.session_state.show_referral_form or st.session_state.selected_referral_id:
     with st.form("referral_crud_form"):
         col1, col2 = st.columns(2)
         with col1:
-            # referrer selection: use connections in session if available
-            conn_options = {}
-            if st.session_state.get('connections'):
-                for c in st.session_state.connections:
-                    cid = c.get('id')
-                    name = c.get('name') or f"{c.get('first_name','')} {c.get('last_name','') }"
-                    conn_options[f"{name} (id:{cid})"] = cid
+            # referrer selection: use users (people in the system) instead of connections
+            user_options = {}
+            users = st.session_state.get('all_users') or st.session_state.get('_users')
+            if users is None:
+                # try fetching from user service
+                try:
+                    users = user_service.get_users()
+                except Exception:
+                    users = []
+                # cache for later
+                st.session_state.all_users = users
 
-            if conn_options:
+            for u in users or []:
+                try:
+                    uid = u.get('id') if isinstance(u, dict) else getattr(u, 'id', None)
+                    name = (u.get('first_name') if isinstance(u, dict) else getattr(u, 'first_name', None)) or (u.get('email') if isinstance(u, dict) else getattr(u, 'email', ''))
+                    last = (u.get('last_name') if isinstance(u, dict) else getattr(u, 'last_name', ''))
+                    display = f"{name} {last} (id:{uid})"
+                    user_options[display] = uid
+                except Exception:
+                    continue
+
+            if user_options:
                 default_ref = None
                 if editing_ref:
-                    default_ref = next((k for k,v in conn_options.items() if v==editing_ref.get('referrer_id')), list(conn_options.keys())[0])
-                selected_ref = st.selectbox("Referrer", options=list(conn_options.keys()), index=list(conn_options.keys()).index(default_ref) if default_ref else 0)
-                referrer_id = conn_options.get(selected_ref)
+                    default_ref = next((k for k,v in user_options.items() if v==editing_ref.get('referrer_id')), list(user_options.keys())[0])
+                selected_ref = st.selectbox("Referrer", options=list(user_options.keys()), index=list(user_options.keys()).index(default_ref) if default_ref else 0)
+                referrer_id = user_options.get(selected_ref)
             else:
-                st.info("No connections available to select as referrer")
+                st.info("No users available to select as referrer")
                 referrer_id = st.number_input("Referrer ID", min_value=1, step=1, value=(editing_ref.get('referrer_id') if editing_ref else 0))
 
             company = st.text_input("Company", value=(editing_ref.get('company') if editing_ref else ""))

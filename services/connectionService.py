@@ -1,6 +1,7 @@
 from typing import Optional
 import logging
-from dao.connectionDAO import ConnectionDAO
+from dao.connectionDAO import ConnectionDAO 
+from dao.userDAO import UserDAO
 from models.response_models import ConnectionResponse
 from models.input_models import ConnectionCreate, ConnectionUpdate
 
@@ -11,6 +12,7 @@ class ConnectionService:
     
     def __init__(self, engine):
         self.connection_dao = ConnectionDAO(engine)
+        self.user_dao = UserDAO(engine)
         
     def get_connection(self, connection_id: int) -> Optional[ConnectionResponse]:
         try:
@@ -61,3 +63,23 @@ class ConnectionService:
     
     def delete_connections_for_user(self, user_id: int) -> bool:
         return self.connection_dao.delete_connections_for_user(user_id)
+    
+    def get_connections(self) -> list[ConnectionResponse]:
+        connections = self.connection_dao.get_connections()
+        return [ConnectionResponse.model_validate(conn) for conn in connections]
+    
+    def get_username_by_connection_id(self, connection_id: int) -> Optional[str]:
+        try: 
+            connection = self.get_connection(connection_id)
+            if connection:
+                user_id = connection.person2_id  # Assuming we want the username of person2
+                # Here you would typically call UserService or UserDAO to get the username
+                user = self.user_dao.get_user_by_id(user_id)
+                if user:
+                    return user.username
+            return None
+        except Exception as e:
+            logger.error(f"Error in get_username_by_connection_id service for id {connection_id}: {e}")
+            return None
+        
+            

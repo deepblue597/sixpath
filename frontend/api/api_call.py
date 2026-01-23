@@ -1,7 +1,7 @@
 # api_service.py
 import requests
 from typing import Optional, List, Dict, Any
-
+from .api_models import UserResponse, ConnectionResponse, ReferralResponse
 
 class APIClient:
     def __init__(self, base_url: str, api_key: Optional[str] = None):
@@ -95,19 +95,38 @@ class UserService:
     def __init__(self, api_client: APIClient):
         self.api_client = api_client
 
-    def get_user(self, user_id: str) -> Dict:
-        return self.api_client.get(f"users/{user_id}")
+    def get_user(self, user_id: str) -> Optional[UserResponse]:
+        try:
+            response = self.api_client.get(f"users/{user_id}")
+            return UserResponse(**response)
+        except Exception:
+            return None
+        
     
-    def get_users(self, limit: int = 100, offset: int = 0) -> List[Dict]:
-        params = {"limit": limit, "offset": offset}
-        response = self.api_client.get("users", params=params)
-        return response if isinstance(response, list) else []
+    def get_users(self, limit: int = 100, offset: int = 0) -> List[UserResponse]:
+        try:
+            
+            params = {"limit": limit, "offset": offset}
+            response = self.api_client.get("users", params=params)
+            return [UserResponse(**user) for user in response]  # Convert list
+        except Exception:
+            return []
+    #TODO: Use the dataclasses for input and output
+    def create_user(self, user_data: Dict) -> Optional[UserResponse]:
+        try:
+            response = self.api_client.post("users", data=user_data)
+            return UserResponse(**response)
+        except Exception:
+            return None
+        #return self.api_client.post("users", data=user_data)
 
-    def create_user(self, user_data: Dict) -> Dict:
-        return self.api_client.post("users", data=user_data)
-
-    def update_user(self, user_id: str, user_data: Dict) -> Dict:
-        return self.api_client.put(f"users/{user_id}", data=user_data)
+    def update_user(self, user_id: str, user_data: Dict) -> Optional[UserResponse]:
+        try:
+            response = self.api_client.put(f"users/{user_id}", data=user_data)
+            return UserResponse(**response)
+        except Exception:
+            return None
+        #return self.api_client.put(f"users/{user_id}", data=user_data)
 
     def delete_user(self, user_id: str) -> bool:
         return self.api_client.delete(f"users/{user_id}")
@@ -126,9 +145,14 @@ class AuthUserService:
         return self.api_client.post("auth/logout", data={})
     
     # TODO: The headers are not needed if token is set in APIClient
-    def get_current_user(self) -> Dict:
+    def get_current_user(self) -> Optional[UserResponse]:
         #headers = {"Authorization": f"Bearer {token}"}
-        return self.api_client.get("users/me")
+        try:
+            response = self.api_client.get("users/me")
+            return UserResponse(**response)
+        except Exception:   
+            return None
+        #return self.api_client.get("users/me")
 
     def register_user(self, user_data: Dict) -> Dict:
         return self.api_client.post("users/register_user", data=user_data)
@@ -162,6 +186,9 @@ class ConnectionService:
         response = self.api_client.get(f"connections/user/{user_id}")
         return response if isinstance(response, list) else []
     
+    def get_all_connections(self) -> List[Dict]:
+        response = self.api_client.get("connections/all")
+        return response if isinstance(response, list) else []
 
 class ReferralService:
     

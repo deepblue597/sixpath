@@ -25,16 +25,6 @@ if not token:
 st.title("👤 Edit Profile")
 st.markdown("Update user settings for yourself or other users")
 
-# with st.sidebar:
-#     if st.button("🏠 Home", use_container_width=True):
-#         st.experimental_set_query_params(page="home")
-#         st.switch_page("streamlit_app.py")
-#     if st.button("🚪 Logout", use_container_width=True):
-#         st.session_state.logged_in = False
-#         st.session_state.token = None
-#         st.session_state.user_data = None
-#         st.switch_page("pages/01_Login.py")
-
 # Load current user
 with st.spinner("Loading current user..."):
     # ensure API client has token for auth headers
@@ -43,11 +33,30 @@ with st.spinner("Loading current user..."):
         current_user = auth_service.get_current_user()
     except Exception:
         current_user = None
+# normalize current_user to plain dict so `.get()` works
+def _model_to_dict(obj):
+    if obj is None:
+        return None
+    if isinstance(obj, dict):
+        return obj
+    if hasattr(obj, "model_dump"):
+        try:
+            return obj.model_dump()
+        except Exception:
+            pass
+    if hasattr(obj, "dict"):
+        try:
+            return obj.dict()
+        except Exception:
+            pass
+    # fallback: try attribute access for common fields
+    return {k: getattr(obj, k, None) for k in ("id", "first_name", "last_name", "email", "company", "sector", "phone", "linkedin_url")}
+
+current_user = _model_to_dict(current_user)
 
 if not current_user:
     st.error("Failed to load current user. Please refresh or login again.")
     st.stop()
-
 tabs = st.tabs(["Edit My Settings", "Edit Other Users"])
 
 with tabs[0]:
@@ -122,6 +131,8 @@ with tabs[1]:
                 users = user_service.get_users()
             except Exception:
                 users = []
+        # normalize any pydantic models to plain dicts for consistent access
+        users = [_model_to_dict(u) for u in users]
         st.session_state._users = users
 
     user_options = []
@@ -136,12 +147,13 @@ with tabs[1]:
         if st.button("Load selected user"):
             st.session_state._selected_user = None
         selected_user = st.session_state.get("_selected_user")
-        if selected_user is None or selected_user.get("id") != selected_id:
+        if selected_user is None or _model_to_dict(selected_user).get("id") != selected_id:
             with st.spinner("Loading user..."):
                 try:
                     selected_user = user_service.get_user(str(selected_id))
                 except Exception:
                     selected_user = None
+            selected_user = _model_to_dict(selected_user)
             st.session_state._selected_user = selected_user
 
         if selected_user:
@@ -244,7 +256,7 @@ with tabs[1]:
                 if created:
                     st.success("✅ User account created")
                     st.session_state._users = None
-                    st.session_state._selected_user = created
+                    st.session_state._selected_user = _model_to_dict(created)
                 else:
                     st.error("❌ Failed to create user account")
         else:
@@ -267,6 +279,6 @@ with tabs[1]:
             if created:
                 st.success("✅ Contact created")
                 st.session_state._users = None
-                st.session_state._selected_user = created
+                st.session_state._selected_user = _model_to_dict(created)
             else:
                 st.error("❌ Failed to create contact")

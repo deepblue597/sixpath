@@ -4,11 +4,12 @@ Uses standalone functions (requests) to call backend /connections routes.
 """
 import os
 from datetime import datetime
+import time
 import requests
 import streamlit as st
 from styling import apply_custom_css
 from api.service_locator import get_connection_service 
-
+from api.api_models import UserResponse
 st.set_page_config(page_title="Edit Connection - SixPaths", page_icon="✏️", layout="centered")
 apply_custom_css()
 
@@ -23,29 +24,48 @@ if not token:
     st.error("Authentication token missing. Please login.")
     st.stop()
 
-current_user = st.session_state.get("user_data")
+current_user: UserResponse = st.session_state.get("user_data")
 if not current_user:
     st.error("Current user not loaded. Please load your profile first.")
     st.stop()
 
-user_id = current_user.get("id")
+user_id = current_user.id
 
 st.title("✏️ Edit Connection")
 
+# Helper: robust rerun that works across Streamlit versions
+def safe_rerun():
+    try:
+        st.experimental_rerun()
+    except Exception:
+        # Fallback: toggle a query param to force a rerun
+        try:
+            params = st.query_params()
+            params["_ts"] = str(time.time())
+            st.experimental_set_query_params(**params)
+        except Exception:
+            # As a last resort, toggle a session-state flag and stop
+            st.session_state.__rerun = not st.session_state.get("__rerun", False)
+            st.stop()
+
 # with st.sidebar:
-#     if st.button("🏠 Home", use_container_width=True):
+#     if st.button("🏠 Home", width='stretch'):
 #         st.switch_page("streamlit_app.py")
-#     if st.button("👤 Profile", use_container_width=True):
+#     if st.button("👤 Profile", width='stretch'):
 #         st.switch_page("pages/04_Edit_Profile.py")
-#     if st.button("🚪 Logout", use_container_width=True):
+#     if st.button("🚪 Logout", width='stretch'):
 #         st.session_state.logged_in = False
 #         st.session_state.token = None
 #         st.session_state.user_data = None
 #         st.switch_page("pages/01_Login.py")
 
-tabs = st.tabs(["My Connections", "Create Connection"])
+# Use a radio control instead of tabs so we can programmatically switch views
+if "_active_connection_tab" not in st.session_state:
+    st.session_state._active_connection_tab = "My Connections"
 
-with tabs[0]:
+selected_tab = st.radio("View", ["My Connections", "Create Connection"], index=(0 if st.session_state._active_connection_tab=="My Connections" else 1))
+
+if selected_tab == "My Connections":
     st.markdown("---")
     if st.button("Reload connections"):
         st.session_state._connections = None
@@ -56,7 +76,8 @@ with tabs[0]:
             try:
                 # ensure token on client
                 connection_service.api_client.set_token(token)
-                connections = connection_service.get_connections_of_user(int(user_id))
+                # load all connections (so edit page can access entire graph)
+                connections = connection_service.get_all_connections()
             except Exception:
                 connections = []
         st.session_state._connections = connections
@@ -73,7 +94,7 @@ with tabs[0]:
             'strength': c.get('strength'),
             'last_interaction': c.get('last_interaction')
         } for c in connections])
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(df, width='stretch')
 
         # selection for details
         ids = [c.get('id') or c.get('connection_id') for c in connections]
@@ -98,6 +119,8 @@ with tabs[0]:
                 if st.button("Edit this connection"):
                     st.session_state._edit_connection = conn
                     st.session_state._connections = None
+                    st.session_state._active_connection_tab = "Create Connection"
+                    safe_rerun()
                 if st.button("Delete this connection"):
                     if st.confirmation if hasattr(st, 'confirmation') else True:
                         with st.spinner("Deleting..."):
@@ -115,7 +138,7 @@ with tabs[0]:
     else:
         st.info("No connections found. Use the Create Connection tab to add one.")
 
-with tabs[1]:
+if selected_tab == "Create Connection":
     st.markdown("---")
     st.subheader("Create / Edit Connection")
 
@@ -156,6 +179,8 @@ with tabs[1]:
                 st.success("✅ Connection updated")
                 st.session_state._connections = None
                 st.session_state._edit_connection = None
+                st.session_state._active_connection_tab = "My Connections"
+                safe_rerun()
             else:
                 st.error("❌ Failed to update connection")
         else:
@@ -167,6 +192,8 @@ with tabs[1]:
             if created:
                 st.success("✅ Connection created")
                 st.session_state._connections = None
+                st.session_state._active_connection_tab = "My Connections"
+                safe_rerun()
             else:
                 st.error("❌ Failed to create connection")
 

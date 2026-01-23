@@ -94,4 +94,14 @@ class ConnectionDAO:
             logger.error(f"Error updating connection with id {connection_id}: {e}")
             raise
         
+    def get_connections(self):
+        """Retrieve all connections"""
+        try:
+            with Session(self.engine) as session:
+                connections = session.query(ConnectionModel).all()
+                return connections
+        except Exception as e:
+            logger.error(f"Error retrieving all connections: {e}")
+            raise
+    
     

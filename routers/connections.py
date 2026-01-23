@@ -12,6 +12,25 @@ from sqlalchemy.exc import IntegrityError
 router = APIRouter(prefix="/connections", tags=["connections"])
 
 
+
+@router.get("/all", response_model=List[ConnectionResponse], status_code=status.HTTP_200_OK)
+async def get_all_connections(
+    current_user: dict = Depends(get_current_user),
+    connection_service: ConnectionService = Depends(get_connection_service)
+):
+    """
+    Get all connections in the system.
+    
+    Args:
+        current_user: Current authenticated user (injected dependency)
+        connection_service: Connection service instance (injected dependency)
+    
+    Returns:
+        List of ConnectionResponse models
+    """
+    connections = connection_service.get_connections()
+    return connections
+
 @router.get("/{connection_id}", response_model=ConnectionResponse , status_code=status.HTTP_200_OK)
 async def get_connection(
     connection_id: int,

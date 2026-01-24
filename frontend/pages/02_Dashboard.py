@@ -114,7 +114,7 @@ company = current_user.company or ''
 email = current_user.email or ''
 
 center_label = f"{first} {last}".strip() or email
-center_title = f"<b>{center_label}</b><br/>{company}<br/>{email}"
+center_title = f"{center_label}\n{company}\n{email}"
 net.add_node(uid, label=center_label if show_labels else "", title=center_title, color="#1E90FF", size=30)
 
 # Add nodes and edges for all filtered connections (both endpoints)
@@ -147,7 +147,7 @@ for c in connections:
                 subtitle = '@' + username
             else:
                 subtitle = position or company or ''
-            tooltip = f"<b>{name}</b><br/>{subtitle}<br/>{email}"
+            tooltip = f"{name}\n{subtitle}\n{email}"
             comp = company
         else:
             name = endpoint

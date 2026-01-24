@@ -5,6 +5,13 @@ This is the main file to run the multi-page Streamlit app.
 Run with: streamlit run frontend/main.py
 """
 import streamlit as st
+import os
+import sys
+
+# Ensure project root is on sys.path so top-level imports like `models` resolve
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
 
 # Page configuration - MUST be first Streamlit command
 st.set_page_config(

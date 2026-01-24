@@ -68,7 +68,7 @@ class ConnectionService:
         connections = self.connection_dao.get_connections()
         return [ConnectionResponse.model_validate(conn) for conn in connections]
     
-    def get_username_by_connection_id(self, connection_id: int) -> Optional[str]:
+    def get_first_last_name_by_connection_id(self, connection_id: int) -> Optional[str]:
         try: 
             connection = self.get_connection(connection_id)
             if connection:
@@ -76,10 +76,10 @@ class ConnectionService:
                 # Here you would typically call UserService or UserDAO to get the username
                 user = self.user_dao.get_user_by_id(user_id)
                 if user:
-                    return user.username
+                    return user.first_name + ' ' + user.last_name
             return None
         except Exception as e:
             logger.error(f"Error in get_username_by_connection_id service for id {connection_id}: {e}")
             return None
         
-            
+    # get all_user

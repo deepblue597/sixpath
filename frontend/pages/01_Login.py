@@ -5,9 +5,9 @@ Handles user authentication and session initialization
 import os
 import time
 import streamlit as st
-from frontend.api.api_models import RegisterRequest
+from models.input_models import AccountCreate, UserCreate 
 from styling import apply_custom_css
-from api.service_locator import get_api_client , get_auth_service 
+from frontend.api.service_locator import get_api_client , get_auth_service 
 # Page configuration
 st.set_page_config(
     page_title="Login - SixPaths",
@@ -95,7 +95,7 @@ with col2:
                     #     "email": ca_email or None,
                     #     "is_me": True
                     # }
-                    payload = RegisterRequest(
+                    payload = AccountCreate(
                         username=ca_username,
                         password=ca_password,
                         first_name=ca_first,
@@ -114,8 +114,8 @@ with col2:
                             login_res = auth_service.login(ca_username, ca_password)
                         except Exception as e:
                             login_res = None
-                        if login_res and login_res.get("access_token"):
-                            token = str(login_res.get("access_token"))
+                        if login_res and login_res.access_token:
+                            token = str(login_res.access_token)
                             api_client.set_token(token)
                             st.session_state.token = token
                             st.session_state.logged_in = True
@@ -126,7 +126,7 @@ with col2:
                             st.session_state.referrals = None
                             try:
                                 params = st.experimental_get_query_params()
-                                params["_ts"] = str(int(time.time()))
+                                params["ts"] = str(int(time.time()))
                                 st.experimental_set_query_params(**params)
                             except Exception:
                                 # fallback: set logged_in and navigate
@@ -147,8 +147,8 @@ with col2:
                 try:
                     result = auth_service.login(username, password)
                     
-                    if result and result.get("access_token"):
-                        token = result.get("access_token")
+                    if result and result.access_token:
+                        token = result.access_token
                         
                         # ensure token is a concrete string for the API client
                         if token is None:

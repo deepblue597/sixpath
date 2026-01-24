@@ -4,18 +4,14 @@ Dashboard Page for SixPaths — Network Visualization
 Uses PyVis to render a network graph of the current user's connections.
 All backend calls are standalone functions using `requests`.
 """
-import os
 import tempfile
 import hashlib
-from typing import List, Optional
-import requests
 import streamlit as st
 from pyvis.network import Network
 import streamlit.components.v1 as components
 from styling import apply_custom_css
 from mock_data import get_sector_color
-from api.service_locator import get_user_service, get_connection_service, get_api_client, get_auth_service
-from api.api_models import UserResponse
+from frontend.api.service_locator import get_user_service, get_connection_service, get_api_client, get_auth_service
 
 st.set_page_config(page_title="Dashboard - SixPaths", page_icon="📊", layout="wide")
 apply_custom_css()
@@ -52,50 +48,43 @@ if "current_user" not in st.session_state or st.button("🔄 Refresh data"):
             st.session_state.all_users = []
         # Load all connections (so the dashboard can display the full network)
         try:
+            print("Loading all connections for dashboard...")
             st.session_state.connections = connection_service.get_all_connections()
         except Exception:
             st.session_state.connections = []
 
 current_user = st.session_state.current_user  # type: ignore
 all_users = st.session_state.all_users  # type: ignore
-connections = st.session_state.get("connections") or []
+
+if "connections" not in st.session_state or st.session_state.get("connections") is None:
+    st.session_state.connections = connection_service.get_all_connections()
+
+connections = st.session_state.connections  
+#print(connections)
 
 
 # Use direct attribute access on API models (or dict access when needed).
 # If a field is missing, fall back to an empty string.
 
-#current_user = current_user
-
 if not current_user:
     st.error("Failed to load current user. Please login again.")
     st.stop()
-
-# Display greeting (use model attributes or dict keys; fallback to empty strings)
-# if isinstance(current_user, dict):
-#     first = current_user.get('first_name', '')
-#     last = current_user.get('last_name', '')
-#     email = current_user.get('email', 'User')
-# else:
-#     first = getattr(current_user, 'first_name', '')
-#     last = getattr(current_user, 'last_name', '')
-#     email = getattr(current_user, 'email', 'User')
-
 
 user_name = (current_user.first_name + ' ' + current_user.last_name).strip() or current_user.email
 st.markdown(f"Welcome back, **{user_name}**! Here's your professional network.")
 
 # Sidebar controls removed for now — use defaults
 # Default filter/display settings (no filtering, color by sector, show labels)
-sectors = sorted({c.get('sector') for c in connections if c.get('sector')})
-companies = sorted({c.get('company') for c in connections if c.get('company')})
-selected_sectors = None
-selected_companies = None
-color_by = "Sector"
+# sectors = sorted({c.get('sector') for c in connections if c.get('sector')})
+# companies = sorted({c.get('company') for c in connections if c.get('company')})
+# selected_sectors = None
+# selected_companies = None
+# color_by = "Sector"
 show_labels = True
 physics_enabled = True
 
 # Filter connections
-filtered_connections = [c for c in connections if (not selected_sectors or c.get('sector') in selected_sectors) and (not selected_companies or c.get('company') in selected_companies)]
+# filtered_connections = [c for c in connections if (not selected_sectors or c.get('sector') in selected_sectors) and (not selected_companies or c.get('company') in selected_companies)]
 
 st.markdown("### 🌐 Interactive Network")
 st.markdown("**Click a node and then use the selector on the right to edit that user.**")
@@ -116,15 +105,7 @@ for u in all_users:
 net = Network(height="650px", width="100%", bgcolor="#ffffff", font_color="#222222")
 net.barnes_hut()
 
-# # center node (normalize id to string)
-# if isinstance(current_user, dict):
-#     uid = str(current_user.get('id', ''))
-#     username = current_user.get('username', '')
-#     first = current_user.get('first_name', '')
-#     last = current_user.get('last_name', '')
-#     company = current_user.get('company', '')
-#     email = current_user.get('email', '')
-# else:
+
 uid = str(current_user.id) 
 username = current_user.username or ''  
 first = current_user.first_name or ''
@@ -138,9 +119,9 @@ net.add_node(uid, label=center_label if show_labels else "", title=center_title,
 
 # Add nodes and edges for all filtered connections (both endpoints)
 existing_node_ids = {str(n.get('id')) for n in net.nodes}
-for c in filtered_connections:
-    a = c.get('person1_id')
-    b = c.get('person2_id')
+for c in connections:
+    a = c.person1_id
+    b = c.person2_id
     if not a or not b:
         continue
 
@@ -157,7 +138,7 @@ for c in filtered_connections:
             email = getattr(user, 'email', '')
             position = getattr(user, 'position', '')
             company = getattr(user, 'company', '')
-            sector = getattr(user, 'sector', None) or c.get('sector', 'Other')
+            sector = getattr(user, 'sector', None) 
 
             name = username or f"{first} {last}".strip() or email
             # build subtitle safely (prefer @username, else position or company)
@@ -167,20 +148,20 @@ for c in filtered_connections:
             else:
                 subtitle = position or company or ''
             tooltip = f"<b>{name}</b><br/>{subtitle}<br/>{email}"
-            comp = company or c.get('company') or 'Unknown'
+            comp = company
         else:
             name = endpoint
             tooltip = f"<b>User ID {endpoint}</b>"
-            sector = c.get('sector', 'Other')
-            comp = c.get('company') or 'Unknown'
+            # sector = c.
+            # comp = c.get('company') or 'Unknown'
 
-        if color_by == "Sector":
-            node_color = get_sector_color(sector)
-        else:
-            color_hash = int(hashlib.md5((comp or 'Unknown').encode()).hexdigest()[:6], 16)
-            node_color = f"#{color_hash:06x}"
+        # if color_by == "Sector":
+        #     node_color = get_sector_color(sector)
+        # else:
+        color_hash = int(hashlib.md5((comp or 'Unknown').encode()).hexdigest()[:6], 16)
+        node_color = f"#{color_hash:06x}"
 
-        size = 30 if endpoint == uid else 12 + (c.get('relationship_strength', 5) * 1.5)
+        size = 30 if endpoint == uid else 12 + c.strength * 1.5
         try:
             net.add_node(endpoint, label=name if show_labels else "", title=tooltip, color=node_color, size=size)
             existing_node_ids.add(endpoint)

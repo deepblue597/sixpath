@@ -1,8 +1,8 @@
 # api_service.py
 import requests
 from typing import Optional, List, Dict, Any
-from .api_models import UserResponse, ConnectionResponse, ReferralResponse , RegisterRequest
-
+from models.input_models import AccountCreate, UserCreate , ConnectionCreate, ConnectionUpdate
+from models.response_models import UserResponse, Token, ConnectionResponse
 class APIClient:
     def __init__(self, base_url: str, api_key: Optional[str] = None):
         self.base_url = base_url
@@ -112,9 +112,9 @@ class UserService:
         except Exception:
             return []
     #TODO: Use the dataclasses for input and output
-    def create_user(self, user_data: Dict) -> Optional[UserResponse]:
+    def create_user(self, user_data: UserCreate) -> Optional[UserResponse]:
         try:
-            response = self.api_client.post("users", data=user_data)
+            response = self.api_client.post("users", data=user_data.model_dump())
             return UserResponse(**response)
         except Exception:
             return None
@@ -135,10 +135,15 @@ class AuthUserService:
     def __init__(self, api_client: APIClient):
         self.api_client = api_client
 
-    def login(self, username: str, password: str) -> Dict:
+    def login(self, username: str, password: str) -> Optional[Token]:
         # OAuth2PasswordRequestForm expects form-encoded fields: username and password
         form = {"username": username, "password": password}
-        return self.api_client.post_form("auth/login", form_data=form)
+        try:
+            response = self.api_client.post_form("auth/login", form_data=form)
+            return Token(**response)
+        except Exception:
+            return None
+    
 
     def logout(self) -> Dict:
         #headers = {"Authorization": f"Bearer {token}"}
@@ -154,7 +159,7 @@ class AuthUserService:
             return None
         #return self.api_client.get("users/me")
 
-    def register_user(self, user_data: RegisterRequest) -> Dict:
+    def register_user(self, user_data: AccountCreate) -> Dict:
         return self.api_client.post("users/register_user", data=user_data.model_dump())
     
     def change_password(self, user_id: str, new_password: str) -> Dict:
@@ -167,17 +172,32 @@ class ConnectionService:
         self.api_client = api_client
     
     #TODO: create Frontend Data Classes 
-    def get_connection(self, connection_id: str) -> Dict:
-        return self.api_client.get(f"connections/{connection_id}")
+    def get_connection(self, connection_id: str) -> ConnectionResponse:
+        try:
+            response = self.api_client.get(f"connections/{connection_id}")
+            return ConnectionResponse(**response)
+        except Exception as e:
+            raise e
+        #return self.api_client.get(f"connections/{connection_id}")
     
-    def create_connection(self, connection_data: Dict) -> Dict:
-        return self.api_client.post("connections", data=connection_data)
+    def create_connection(self, connection_data: ConnectionCreate) -> ConnectionResponse:
+        try:
+            response = self.api_client.post("connections", data=connection_data.model_dump())
+            return ConnectionResponse(**response)
+        except Exception as e:
+            raise e
+        #self.api_client.post("connections", data=connection_data.model_dump())
 
     def delete_connection(self, connection_id: str) -> bool:
         return self.api_client.delete(f"connections/{connection_id}")
     
-    def update_connection(self, connection_id: str, connection_data: Dict) -> Dict:
-        return self.api_client.put(f"connections/{connection_id}", data=connection_data)
+    def update_connection(self, connection_id: str, connection_data: ConnectionUpdate) -> Optional[ConnectionResponse]:
+        try:
+            response = self.api_client.put(f"connections/{connection_id}", data=connection_data.model_dump())
+            return ConnectionResponse(**response)
+        except Exception:
+            return None
+        #response = self.api_client.put(f"connections/{connection_id}", data=connection_data.model_dump())
     
     def get_connections_of_user(self, user_id: int) -> List[Dict]:
         # user_id is a path parameter 
@@ -186,9 +206,14 @@ class ConnectionService:
         response = self.api_client.get(f"connections/user/{user_id}")
         return response if isinstance(response, list) else []
     
-    def get_all_connections(self) -> List[Dict]:
-        response = self.api_client.get("connections/all")
-        return response if isinstance(response, list) else []
+    def get_all_connections(self) -> List[ConnectionResponse]:
+        try:
+            response = self.api_client.get("connections/all")
+            return [ConnectionResponse(**conn) for conn in response]  # Convert list
+        except Exception:
+            return []
+        # response = self.api_client.get("connections/all")
+        # return response if isinstance(response, list) else []
 
 class ReferralService:
     

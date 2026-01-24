@@ -3,7 +3,8 @@ import json
 import requests
 import streamlit as st
 from styling import apply_custom_css
-from api.service_locator import get_api_client , get_auth_service , get_user_service
+from models.input_models import UserCreate
+from frontend.api.service_locator import get_api_client , get_auth_service , get_user_service
 st.set_page_config(page_title="Edit Profile - SixPaths", page_icon="👤", layout="centered")
 
 apply_custom_css()
@@ -57,24 +58,25 @@ def _model_to_dict(obj):
 if not current_user:
     st.error("Failed to load current user. Please refresh or login again.")
     st.stop()
-tabs = st.tabs(["Edit My Settings", "Edit Other Users"])
+tabs = st.tabs(["Edit My Profile", "Edit Users Profile", "Create New Profile"])
 
 with tabs[0]:
     st.subheader("My Profile")
     with st.expander("View / Edit My Profile", expanded=True):
+        # current_user is a model (UserResponse) — use attributes directly
         user = current_user
         with st.form("edit_my_profile"):
             col1, col2 = st.columns(2)
             with col1:
-                first_name = st.text_input("First name", value=user.first_name or "")
-                last_name = st.text_input("Last name", value=user.get("last_name", ""))
-                email = st.text_input("Email", value=user.get("email", ""))
+                first_name = st.text_input("First name", value=getattr(user, 'first_name', '') or '')
+                last_name = st.text_input("Last name", value=getattr(user, 'last_name', '') or '')
+                email = st.text_input("Email", value=getattr(user, 'email', '') or '')
             with col2:
-                company = st.text_input("Company", value=user.get("company", ""))
-                sector = st.text_input("Sector", value=user.get("sector", ""))
-                phone = st.text_input("Phone", value=user.get("phone", ""))
+                company = st.text_input("Company", value=getattr(user, 'company', '') or '')
+                sector = st.text_input("Sector", value=getattr(user, 'sector', '') or '')
+                phone = st.text_input("Phone", value=getattr(user, 'phone', '') or '')
 
-            linkedin = st.text_input("LinkedIn URL", value=user.get("linkedin_url", ""))
+            linkedin = st.text_input("LinkedIn URL", value=getattr(user, 'linkedin_url', '') or '')
             save = st.form_submit_button("Save changes")
         if save:
             payload = {
@@ -88,7 +90,7 @@ with tabs[0]:
             }
             with st.spinner("Saving..."):
                 try:
-                    updated = user_service.update_user(str(user.get("id")), payload)
+                    updated = user_service.update_user(str(getattr(user, 'id')), payload)
                 except Exception:
                     updated = None
             if updated:
@@ -108,7 +110,7 @@ with tabs[0]:
             else:
                 with st.spinner("Changing password..."):
                     try:
-                        resp = auth_service.change_password(str(user.get("id")), new_password)
+                        resp = auth_service.change_password(str(getattr(user, 'id')), new_password)
                         ok = bool(resp)
                     except Exception:
                         ok = False
@@ -119,7 +121,7 @@ with tabs[0]:
 
 with tabs[1]:
     st.markdown("---")
-    st.subheader("Manage Other Users")
+    st.subheader("Manage Users")
 
     if st.button("Reload users list"):
         st.session_state._users = None
@@ -131,14 +133,13 @@ with tabs[1]:
                 users = user_service.get_users()
             except Exception:
                 users = []
-        # normalize any pydantic models to plain dicts for consistent access
-        users = [_model_to_dict(u) for u in users]
+        # keep models as-is (they are UserResponse instances)
         st.session_state._users = users
 
     user_options = []
     for u in users:
-        display = f"{u.get('first_name','') or u.get('email','')} {u.get('last_name','')} (id:{u.get('id')})"
-        user_options.append((display, u.get('id')))
+        display = f"{getattr(u, 'first_name', '') or getattr(u, 'email', '')} {getattr(u, 'last_name', '')} (id:{getattr(u, 'id', '')})"
+        user_options.append((display, getattr(u, 'id', '')))
 
     if user_options:
         labels = [t[0] for t in user_options]
@@ -147,28 +148,27 @@ with tabs[1]:
         if st.button("Load selected user"):
             st.session_state._selected_user = None
         selected_user = st.session_state.get("_selected_user")
-        if selected_user is None or _model_to_dict(selected_user).get("id") != selected_id:
+        if selected_user is None or getattr(selected_user, 'id', None) != selected_id:
             with st.spinner("Loading user..."):
                 try:
                     selected_user = user_service.get_user(str(selected_id))
                 except Exception:
                     selected_user = None
-            selected_user = _model_to_dict(selected_user)
             st.session_state._selected_user = selected_user
 
         if selected_user:
             with st.form("edit_other_user"):
                 col1, col2 = st.columns(2)
                 with col1:
-                    o_first = st.text_input("First name", value=selected_user.get("first_name", ""))
-                    o_last = st.text_input("Last name", value=selected_user.get("last_name", ""))
-                    o_email = st.text_input("Email", value=selected_user.get("email", ""))
+                    o_first = st.text_input("First name", value=getattr(selected_user, 'first_name', '') or '')
+                    o_last = st.text_input("Last name", value=getattr(selected_user, 'last_name', '') or '')
+                    o_email = st.text_input("Email", value=getattr(selected_user, 'email', '') or '')
                 with col2:
-                    o_company = st.text_input("Company", value=selected_user.get("company", ""))
-                    o_sector = st.text_input("Sector", value=selected_user.get("sector", ""))
-                    o_phone = st.text_input("Phone", value=selected_user.get("phone", ""))
+                    o_company = st.text_input("Company", value=getattr(selected_user, 'company', '') or '')
+                    o_sector = st.text_input("Sector", value=getattr(selected_user, 'sector', '') or '')
+                    o_phone = st.text_input("Phone", value=getattr(selected_user, 'phone', '') or '')
 
-                o_linkedin = st.text_input("LinkedIn URL", value=selected_user.get("linkedin_url", ""))
+                o_linkedin = st.text_input("LinkedIn URL", value=getattr(selected_user, 'linkedin_url', '') or '')
                 save_other = st.form_submit_button("Save user")
             if save_other:
                 payload = {
@@ -182,7 +182,7 @@ with tabs[1]:
                 }
                 with st.spinner("Saving user..."):
                     try:
-                        updated = user_service.update_user(str(selected_user.get("id")), payload)
+                        updated = user_service.update_user(str(getattr(selected_user, 'id')), payload)
                     except Exception:
                         updated = None
                 if updated:
@@ -197,10 +197,10 @@ with tabs[1]:
             st.markdown("### Delete user")
             confirm = st.checkbox("I understand this will permanently delete the selected user")
             if confirm:
-                if st.button("Delete user", key=f"delete_{selected_user.get('id')}"):
+                if st.button("Delete user", key=f"delete_{getattr(selected_user, 'id')}"):
                     with st.spinner("Deleting user..."):
                         try:
-                            ok = user_service.delete_user(str(selected_user.get("id")))
+                            ok = user_service.delete_user(str(getattr(selected_user, 'id')))
                         except Exception:
                             ok = False
                     if ok:
@@ -212,8 +212,9 @@ with tabs[1]:
     else:
         st.info("No other users available")
 
+with tabs[2]:
     st.markdown("---")
-    st.subheader("Create New User")
+    st.subheader("Create New Profile")
     with st.form("create_user_form"):
         n_col1, n_col2 = st.columns(2)
         with n_col1:
@@ -225,60 +226,69 @@ with tabs[1]:
             n_sector = st.text_input("Sector")
             n_phone = st.text_input("Phone")
         n_linkedin = st.text_input("LinkedIn URL")
-        create_as_account = st.checkbox("Create as user account (requires username & password)")
-        n_username = st.text_input("Username") if create_as_account else None
-        n_password = st.text_input("Temporary password", type="password") if create_as_account else st.text_input("Temporary password", type="password")
+        #create_as_account = st.checkbox("Create as user account (requires username & password)")
+        #n_username = st.text_input("Username") if create_as_account else None
+        #n_password = st.text_input("Temporary password", type="password") if create_as_account else None
         create_btn = st.form_submit_button("Create user")
 
     if create_btn:
-        if create_as_account:
-            # require username, email, password
-            if not n_email or not n_username or not n_password:
-                st.error("Email, username and password are required for account creation")
-            else:
-                payload = {
-                    "first_name": n_first,
-                    "last_name": n_last,
-                    "email": n_email,
-                    "company": n_company,
-                    "sector": n_sector,
-                    "phone": n_phone,
-                    "linkedin_url": n_linkedin,
-                    "username": n_username,
-                    "password": n_password,
-                    "is_me": False
-                }
-                with st.spinner("Registering user account..."):
-                    try:
-                        created = auth_service.register_user(payload)
-                    except Exception:
-                        created = None
-                if created:
-                    st.success("✅ User account created")
-                    st.session_state._users = None
-                    st.session_state._selected_user = _model_to_dict(created)
-                else:
-                    st.error("❌ Failed to create user account")
+        # if create_as_account:
+        #     # require username, email, password
+        #     if not n_email or not n_username or not n_password:
+        #         st.error("Email, username and password are required for account creation")
+        #     else:
+        #         payload = {
+        #             "first_name": n_first,
+        #             "last_name": n_last,
+        #             "email": n_email,
+        #             "company": n_company,
+        #             "sector": n_sector,
+        #             "phone": n_phone,
+        #             "linkedin_url": n_linkedin,
+        #             "username": n_username,
+        #             "password": n_password,
+        #             "is_me": False
+        #         }
+        #         with st.spinner("Registering user account..."):
+        #             try:
+        #                 created = auth_service.register_user(payload)
+        #             except Exception:
+        #                 created = None
+        #         if created:
+        #             st.success("✅ User account created")
+        #             st.session_state._users = None
+        #             st.session_state._selected_user = created
+        #         else:
+        #             st.error("❌ Failed to create user account")
+
+        if not n_email:
+            st.error("Email is recommended for contacts but not required")
+        # payload = {
+        #     "first_name": n_first,
+        #     "last_name": n_last,
+        #     "email": n_email,
+        #     "company": n_company,
+        #     "sector": n_sector,
+        #     "phone": n_phone,
+        #     "linkedin_url": n_linkedin,
+        # }
+        payload = UserCreate(
+            first_name=n_first,
+            last_name=n_last,
+            email=n_email or None,
+            company=n_company or None,
+            sector=n_sector or None,
+            phone=n_phone or None,
+            linkedin_url=n_linkedin or None
+        )
+        with st.spinner("Creating contact..."):
+            try:
+                created = user_service.create_user(payload)
+            except Exception:
+                created = None
+        if created:
+            st.success("✅ Contact created")
+            st.session_state._users = None
+            st.session_state._selected_user = created
         else:
-            if not n_email:
-                st.error("Email is recommended for contacts but not required")
-            payload = {
-                "first_name": n_first,
-                "last_name": n_last,
-                "email": n_email,
-                "company": n_company,
-                "sector": n_sector,
-                "phone": n_phone,
-                "linkedin_url": n_linkedin,
-            }
-            with st.spinner("Creating contact..."):
-                try:
-                    created = user_service.create_user(payload)
-                except Exception:
-                    created = None
-            if created:
-                st.success("✅ Contact created")
-                st.session_state._users = None
-                st.session_state._selected_user = _model_to_dict(created)
-            else:
-                st.error("❌ Failed to create contact")
+            st.error("❌ Failed to create contact")

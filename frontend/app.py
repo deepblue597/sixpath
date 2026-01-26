@@ -79,13 +79,21 @@ edit_connections_page = st.Page(
     icon="✏️"
 )
 
+# Results viewer
+contacts_page = st.Page(
+    page="pages/06_Contacts.py",
+    title="Contacts",
+    icon="📇"
+)
+
 # Create navigation with pages (but sidebar is hidden)
 pg = st.navigation([
     login_page, 
     home_page, 
     referral_page,
     edit_profile_page,
-    edit_connections_page
+    edit_connections_page, 
+    contacts_page
 ])
 
 # Run the selected page

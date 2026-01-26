@@ -51,3 +51,14 @@ class ReferralResponse(BaseModel):
     updated_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
+    
+
+class ConnectionNameResponse(BaseModel):
+    user1_full_name: str
+    user2_full_name: str
+    model_config = ConfigDict(from_attributes=True)
+    
+class FilterOptionResponse(BaseModel):
+    company: list[str]
+    sector: list[str]
+    model_config = ConfigDict(from_attributes=True)

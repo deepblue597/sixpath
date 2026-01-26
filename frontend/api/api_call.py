@@ -2,7 +2,7 @@
 import requests
 from typing import Optional, List, Dict, Any
 from models.input_models import AccountCreate, UserCreate , ConnectionCreate, ConnectionUpdate
-from models.response_models import UserResponse, Token, ConnectionResponse
+from models.response_models import ConnectionNameResponse, FilterOptionResponse, UserResponse, Token, ConnectionResponse
 class APIClient:
     def __init__(self, base_url: str, api_key: Optional[str] = None):
         self.base_url = base_url
@@ -130,6 +130,14 @@ class UserService:
 
     def delete_user(self, user_id: str) -> bool:
         return self.api_client.delete(f"users/{user_id}")
+    
+    def get_companies_sectors(self) -> FilterOptionResponse:
+        try:
+            response = self.api_client.get("users/filter-options")
+            return FilterOptionResponse(**response)
+        except Exception:
+            return FilterOptionResponse(company=[], sector=[])
+        
 
 class AuthUserService:
     def __init__(self, api_client: APIClient):
@@ -165,6 +173,14 @@ class AuthUserService:
     def change_password(self, user_id: str, new_password: str) -> Dict:
         data = {"new_password": new_password}
         return self.api_client.post(f"users/{user_id}/change-password", data=data)
+    
+    def account_user_exist(self) -> bool:
+        try:
+            response = self.api_client.get("auth/account-exists")
+            print(response) 
+            return response.get("account_exists", False)
+        except Exception:
+            return False
 
 class ConnectionService:
     
@@ -214,6 +230,13 @@ class ConnectionService:
             return []
         # response = self.api_client.get("connections/all")
         # return response if isinstance(response, list) else []
+    #TODO: Use in edit connection     
+    def get_first_last_name_by_connection_id(self, connection_id: int) -> Optional[ConnectionNameResponse] :
+        try:
+            response = self.api_client.get(f"connections/first-last-name/{connection_id}")
+            return ConnectionNameResponse(**response)
+        except Exception:
+            return None
 
 class ReferralService:
     

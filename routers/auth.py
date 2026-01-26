@@ -133,3 +133,18 @@ async def generate_service_token(
         print(f"Service token generation error: {str(e)}")
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Service error: {str(e)}")
+    
+@router.get("/account-exists", status_code=status.HTTP_200_OK)
+async def account_user_exist(
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Check if any user account exists in the database.
+    
+    Args:
+        user_service: User service instance (injected dependency)
+    Returns:
+        Boolean indicating if any user account exists
+    """
+    exists = user_service.account_user_exist()
+    return {"account_exists": exists}

@@ -21,7 +21,14 @@ apply_custom_css()
 
 api_client = get_api_client()
 auth_service = get_auth_service()
-
+# Determine whether account creation should be shown
+try:
+    #account_creation_allowed = True
+    # AuthUserService exposes `account_user_exist()`
+    #if hasattr(auth_service, "account_user_exist"):
+    account_creation_allowed = not auth_service.account_user_exist()
+except Exception:
+    account_creation_allowed = False
 # Initialize session state
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
@@ -64,11 +71,12 @@ with col2:
 
         submit_button = st.form_submit_button("Login", width='stretch')
 
-    # Create account toggle
+    # Create account toggle (only show if account creation is allowed)
     if "show_create_account" not in st.session_state:
         st.session_state.show_create_account = False
-    if st.button("Create account"):
-        st.session_state.show_create_account = True
+    if account_creation_allowed:
+        if st.button("Create account"):
+            st.session_state.show_create_account = True
 
     if st.session_state.show_create_account:
         st.markdown("---")

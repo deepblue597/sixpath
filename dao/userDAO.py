@@ -1,8 +1,9 @@
 from typing import Any, Dict, Optional
-from sqlalchemy import  update
+from sqlalchemy import  update , exists
 import logging
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session 
 from models.database_models import UserModel
+from models.response_models import FilterOptionResponse
 
 logger = logging.getLogger(__name__)
 
@@ -104,3 +105,28 @@ class UserDAO:
     #     except Exception as e:
     #         logger.error(f"Error retrieving connections for user {owner_id}: {e}")
     #         return []
+    
+    def account_user_exist(self) -> bool:
+        """Check if any user account exists in the database."""
+        try:
+            with Session(self.engine) as session:
+                user_exists = session.query(exists().where(UserModel.username.isnot(None))).scalar()
+                return user_exists
+        except Exception as e:
+            logger.error(f"Error checking if any user account exists: {e}")
+            return False
+        
+    def get_companies_sectors(self) -> FilterOptionResponse:
+        """Retrieve distinct companies and sectors from users."""
+        try:
+            with Session(self.engine) as session:
+                companies = session.query(UserModel.company).distinct().all()
+                sectors = session.query(UserModel.sector).distinct().all()
+                
+                companies = [c[0] for c in companies if c[0]]
+                sectors = [s[0] for s in sectors if s[0]]
+                return FilterOptionResponse(company=companies, sector=sectors)
+                
+        except Exception as e:
+            logger.error(f"Error retrieving distinct companies and sectors: {e}")
+            return FilterOptionResponse(company=[], sector=[])

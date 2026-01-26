@@ -3,7 +3,7 @@ Router for connection operations.
 """
 from fastapi import HTTPException, status, APIRouter, Depends
 from typing import List
-from models.response_models import ConnectionResponse
+from models.response_models import ConnectionNameResponse, ConnectionResponse
 from utils.dependencies import get_connection_service, get_current_user
 from services.connectionService import ConnectionService
 from models.input_models import  ConnectionCreate , ConnectionUpdate
@@ -161,3 +161,25 @@ async def get_connections_for_user(
     """
     connections = connection_service.get_connections_for_user(user_id)
     return connections
+
+
+@router.get("/first-last-name/{connection_id}", response_model=ConnectionNameResponse, status_code=status.HTTP_200_OK)
+async def get_first_last_name_by_connection_id(
+    connection_id: int,
+    current_user: dict = Depends(get_current_user),
+    connection_service: ConnectionService = Depends(get_connection_service)
+):
+    """
+    Get the first and last name of a connection by ID.
+    
+    Args:
+        connection_id: ID of the connection
+        current_user: Current authenticated user (injected dependency)
+        connection_service: Connection service instance (injected dependency)
+    Returns:
+        Full name string (first + last) of the connection
+    """
+    full_names = connection_service.get_first_last_name_by_connection_id(connection_id)
+    if not full_names:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connection not found")
+    return full_names

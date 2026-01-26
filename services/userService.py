@@ -1,7 +1,7 @@
 from typing import Optional
 import logging
 from dao.userDAO import UserDAO
-from models.response_models import UserResponse
+from models.response_models import FilterOptionResponse, UserResponse
 from models.input_models import UserCreate, UserUpdate, AccountCreate
 from pwdlib import PasswordHash
 from pwdlib.hashers.argon2 import Argon2Hasher
@@ -90,3 +90,10 @@ class UserService:
         update_data = {'password': new_password_hash}
         updated_user = self.user_dao.update_user(user_id, update_data)
         return updated_user is not None
+    
+    def account_user_exist(self) -> bool:
+        return self.user_dao.account_user_exist()
+    
+    def get_companies_sectors(self) -> FilterOptionResponse:
+        """Retrieve distinct companies and sectors from users."""
+        return self.user_dao.get_companies_sectors()

@@ -3,7 +3,7 @@ Router for user operations.
 """
 from fastapi import HTTPException, status, APIRouter, Depends
 from typing import List
-from models.response_models import UserResponse
+from models.response_models import FilterOptionResponse, UserResponse
 from utils.dependencies import get_user_service, get_current_user
 from services.userService import UserService
 from models.input_models import  UserCreate , UserUpdate , AccountCreate
@@ -32,6 +32,23 @@ async def get_current_user_info(
     
     user.is_me = True
     return user
+
+@router.get("/filter-options", response_model=FilterOptionResponse, status_code=status.HTTP_200_OK)
+async def get_filter_options(
+    user_service: UserService = Depends(get_user_service),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get distinct companies and sectors from users for filtering.
+    
+    Args:
+        user_service: User service instance (injected dependency)
+        current_user: Current authenticated user (injected dependency)
+    Returns:
+        FilterOptionResponse model with lists of distinct companies and sectors
+    return user_service.get_companies_sectors()
+    """
+    return user_service.get_companies_sectors()
 
 @router.get("/{user_id}", response_model=UserResponse , status_code=status.HTTP_200_OK)
 async def get_user(
@@ -117,6 +134,7 @@ async def get_all_users(
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
     user_id: int,
+    current_user = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service),
 ):
     """
@@ -139,6 +157,7 @@ async def update_user(
     user_id: int,
     user_update: UserUpdate,
     user_service: UserService = Depends(get_user_service),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Update user by ID.
@@ -240,3 +259,4 @@ async def change_user_password(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found or password change failed")
     
     return {"detail": "Password changed successfully"}
+

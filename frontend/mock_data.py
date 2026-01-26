@@ -142,14 +142,19 @@ def generate_referrals(connections, num_referrals=8):
     return referrals
 
 
-def get_sector_color(sector):
-    """Return consistent color for each sector"""
+def get_sector_color(sector: str | None) -> str | None:
+    if not sector:
+        return None
+    key = sector.strip().casefold()
+
     colors = {
-        "Technology": "#3B82F6",  # Blue
-        "Finance": "#10B981",     # Green
-        "Healthcare": "#EF4444",  # Red
-        "Education": "#F59E0B",   # Amber
-        "Marketing": "#8B5CF6",   # Purple
-        "Manufacturing": "#6B7280" # Gray
+        "technology": "#3B82F6",
+        "tech": "#3B82F6",
+        "finance": "#10B981",
+        "healthcare": "#EF4444",
+        "education": "#F59E0B",
+        "marketing": "#8B5CF6",
+        "manufacturing": "#6B7280",
     }
-    return colors.get(sector, "#94A3B8")
+    return colors.get(key)  # None => unknown
+

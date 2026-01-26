@@ -99,6 +99,7 @@ with tab_all:
             try:
                 connection_service.api_client.set_token(token)
                 raw = connection_service.get_all_connections()
+                
                 connections = [ConnectionResponse.model_validate(r) if isinstance(r, dict) else r for r in (raw or [])]
             except Exception:
                 connections = []
@@ -107,22 +108,35 @@ with tab_all:
     st.markdown("### All Connections")
     if connections:
         import pandas as pd
-        df = pd.DataFrame([{
-            'id': c.id,
-            'person1_id': c.person1_id,
-            'person2_id': c.person2_id,
-            'relationship': c.relationship,
-            'strength': c.strength,
-            'last_interaction': c.last_interaction,
-            'notes': c.notes,
-            'created_at': c.created_at,
-            'updated_at': c.updated_at
-            # 'id': c.get('id') or c.get('connection_id'),
-            # 'name': c.get('person_name') or c.get('name') or '',
-            # 'relationship': c.get('relationship'),
-            # 'strength': c.get('strength'),
-            # 'last_interaction': c.get('last_interaction')
-        } for c in connections])
+        rows = []
+        # Ensure the API client has the token set (should be set when loading connections)
+        for c in connections:
+            try:
+                names = connection_service.get_first_last_name_by_connection_id(c.id)
+                person1_name = names.user1_full_name if names else None
+                person2_name = names.user2_full_name if names else None
+            except Exception:
+                person1_name = None
+                person2_name = None
+
+            # Fallback to IDs if names not available
+            person1_display = person1_name or f"id:{c.person1_id}"
+            person2_display = person2_name or f"id:{c.person2_id}"
+
+            rows.append({
+                'id': c.id,
+                'person1_name': person1_display,
+                'person2_name': person2_display,
+                'relationship': c.relationship,
+                'strength': c.strength,
+                'last_interaction': c.last_interaction,
+                'notes': c.notes,
+                'context': c.context,
+                'created_at': c.created_at,
+                'updated_at': c.updated_at
+            })
+
+        df = pd.DataFrame(rows)
         st.dataframe(df, width='stretch')
 
         ids = [c.id for c in connections]
@@ -143,13 +157,26 @@ with tab_edit:
                 try:
                     connection_service.api_client.set_token(token)
                     connections = connection_service.get_all_connections()
+                    
                 except Exception:
                     connections = []
                 st.session_state.connections = connections
 
         if connections:
             ids = [c.id for c in connections]
-            labels = [f"{c.person1_id} (id:{ids[i]})" for i,c in enumerate(connections)]
+            labels = []
+            for i, c in enumerate(connections):
+                try:
+                    names = connection_service.get_first_last_name_by_connection_id(c.id)
+                    p1 = names.user1_full_name if names else None
+                    p2 = names.user2_full_name if names else None
+                except Exception:
+                    p1 = None
+                    p2 = None
+
+                p1_disp = p1 or f"id:{c.person1_id}"
+                p2_disp = p2 or f"id:{c.person2_id}"
+                labels.append(f"{p1_disp} ↔ {p2_disp} (id:{ids[i]})")
             sel = st.selectbox("Select connection to edit", ["-- none --"] + labels, key="select_edit_connection")
             if sel != "-- none --":
                 idx = labels.index(sel)
@@ -264,9 +291,12 @@ with tab_create:
         with col2:
             relationship = st.text_input("Relationship", value="")
             strength = st.slider("Strength", min_value=0, max_value=5, value=5, step=1)
+            notes = st.text_area("Notes", value="")
 
         last_interaction = st.date_input("Last interaction", value=datetime.now().date())
-        notes = st.text_area("Notes", value="")
+        context = st.text_input("Context", value="")
+       
+    
         submitted = st.button("Create")
         
 
@@ -280,7 +310,7 @@ with tab_create:
                 person2_id=person2_id,
                 relationship=relationship,
                 strength=strength,
-                context="",
+                context=context,
                 last_interaction=last_interaction.strftime("%Y-%m-%d"),
                 notes=notes
             )
@@ -294,9 +324,9 @@ with tab_create:
         else:
             st.error("❌ Failed to create connection")
 
-with st.expander("💡 Connection Tips"):
-    st.markdown("""
-    - Use numeric IDs for `person1_id` and `person2_id` (or load them from your Users page)
-    - `strength` is a float between 0 and 10
-    - `last_interaction` should be ISO date (YYYY-MM-DD)
-    """)
+# with st.expander("💡 Connection Tips"):
+#     st.markdown("""
+#     - Use numeric IDs for `person1_id` and `person2_id` (or load them from your Users page)
+#     - `strength` is a float between 0 and 10
+#     - `last_interaction` should be ISO date (YYYY-MM-DD)
+#     """)

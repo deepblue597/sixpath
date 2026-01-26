@@ -2,7 +2,7 @@ from typing import Optional
 import logging
 from dao.connectionDAO import ConnectionDAO 
 from dao.userDAO import UserDAO
-from models.response_models import ConnectionResponse
+from models.response_models import ConnectionNameResponse, ConnectionResponse
 from models.input_models import ConnectionCreate, ConnectionUpdate
 
 
@@ -68,15 +68,21 @@ class ConnectionService:
         connections = self.connection_dao.get_connections()
         return [ConnectionResponse.model_validate(conn) for conn in connections]
     
-    def get_first_last_name_by_connection_id(self, connection_id: int) -> Optional[str]:
+    def get_first_last_name_by_connection_id(self, connection_id: int) -> Optional[ConnectionNameResponse]:
         try: 
             connection = self.get_connection(connection_id)
             if connection:
-                user_id = connection.person2_id  # Assuming we want the username of person2
+                user1_id = connection.person1_id  # Assuming we want the username of person2
                 # Here you would typically call UserService or UserDAO to get the username
-                user = self.user_dao.get_user_by_id(user_id)
-                if user:
-                    return user.first_name + ' ' + user.last_name
+                user1 = self.user_dao.get_user_by_id(user1_id)
+                user2_id = connection.person2_id  # Assuming we want the username of person2
+                user2 = self.user_dao.get_user_by_id(user2_id)
+                if user1 and user2:
+                    return ConnectionNameResponse(
+                        user1_full_name=f"{user1.first_name} {user1.last_name}",
+                        user2_full_name=f"{user2.first_name} {user2.last_name}"
+                    )
+                    
             return None
         except Exception as e:
             logger.error(f"Error in get_username_by_connection_id service for id {connection_id}: {e}")

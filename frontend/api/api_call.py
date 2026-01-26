@@ -1,7 +1,7 @@
 # api_service.py
 import requests
 from typing import Optional, List, Dict, Any
-from models.input_models import AccountCreate, UserCreate , ConnectionCreate, ConnectionUpdate
+from models.input_models import AccountCreate, UserCreate , ConnectionCreate, ConnectionUpdate, UserUpdate
 from models.response_models import ConnectionNameResponse, FilterOptionResponse, UserResponse, Token, ConnectionResponse
 class APIClient:
     def __init__(self, base_url: str, api_key: Optional[str] = None):
@@ -120,9 +120,9 @@ class UserService:
             return None
         #return self.api_client.post("users", data=user_data)
 
-    def update_user(self, user_id: str, user_data: Dict) -> Optional[UserResponse]:
+    def update_user(self, user_id: str, user_data: UserUpdate) -> Optional[UserResponse]:
         try:
-            response = self.api_client.put(f"users/{user_id}", data=user_data)
+            response = self.api_client.put(f"users/{user_id}", data=user_data.model_dump())
             return UserResponse(**response)
         except Exception:
             return None

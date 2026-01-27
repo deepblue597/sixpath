@@ -7,6 +7,44 @@ Overview
 
 SixPaths allows you to visualize your professional network as an interactive node graph, with yourself at the center and your connections branching out by sector, company, or relationship type. Unlike traditional contact management systems that use lists or tables, SixPaths provides a spatial, visual representation of how your network connects—inspired by the concept of six degrees of separation.
 
+## Pages
+
+### Login page
+
+Login with username and password. On first run, create the initial admin account. After that, only login is available to maintain security.
+
+[![Login Page](static/login_page.png)](static/login_page.png)
+
+### Dashboard
+
+The dashboard displays your network graph where you can add connections, organize them by categories, and track your professional relationships visually.
+
+[![Dashboard](static/dashboard.png)](static/dashboard.png)
+
+### Profile Page
+
+The profile page allows you to view and edit your personal information, including your name, email, and password as well as the info of other users inside the system.
+
+![Profile Page](static/edit_profile.png)
+
+### Connection Detail Page
+
+The connection detail page allows you to view and edit detailed information about each contact, including notes on how you met them and the context of your relationship.
+
+![Connection Detail Page](static/connections.png)
+
+### Referral Page
+
+The referral page helps you track and manage referrals between your connections, making it easy to see who referred you.
+
+![Referral Page](static/referrals.png)
+
+### Contacts Page
+
+The contacts page provides a list view of all your connections, with their info.
+
+![Contacts Page](static/contacts.png)
+
 ## Key Features
 
 Interactive Network Visualization: View your entire professional network as a dynamic graph with customizable layouts and groupings

@@ -19,7 +19,11 @@ Login with username and password. On first run, create the initial admin account
 
 The dashboard displays your network graph where you can add connections, organize them by categories, and track your professional relationships visually.
 
-[![Dashboard](static/dashboard.png)](static/dashboard.png)
+![Dashboard](static/dashboard.png)
+
+The user can also interact with the network visualization
+
+![Network](static/network_visualization.png)
 
 ### Profile Page
 

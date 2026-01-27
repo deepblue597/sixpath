@@ -6,168 +6,96 @@ import streamlit as st
 
 
 def apply_custom_css():
-    """Apply custom CSS styling to the Streamlit app"""
     st.markdown("""
     <style>
-        /* Main color scheme */
-        :root {
-            --primary-navy: #1E3A8A;
-            --secondary-blue: #3B82F6;
-            --accent-gold: #F59E0B;
-            --background-light: #F8FAFC;
-            --text-dark: #1E293B;
-        }
-        
-        /* Main container styling */
-        .main {
-            background-color: var(--background-light);
-        }
-        
-        /* Headers */
-        h1, h2, h3 {
-            color: var(--primary-navy) !important;
-            font-weight: 600 !important;
-        }
-        
-        /* Buttons */
-        .stButton > button {
-            background-color: var(--primary-navy);
-            color: white;
-            border-radius: 8px;
-            border: none;
-            padding: 0.5rem 1rem;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-        
-        .stButton > button:hover {
-            background-color: var(--secondary-blue);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        
-        /* Form inputs */
-        .stTextInput > div > div > input,
-        .stTextArea > div > div > textarea,
-        .stSelectbox > div > div > select {
-            border-radius: 6px;
-            border: 1px solid #CBD5E1;
-        }
-        
-        /* Sidebar */
-        [data-testid="stSidebar"] {
-            background-color: var(--primary-navy);
-        }
-        
-        [data-testid="stSidebar"] * {
-            color: white !important;
-        }
-        
-        /* Metrics */
-        [data-testid="stMetricValue"] {
-            color: var(--primary-navy);
-            font-size: 2rem;
-            font-weight: 700;
-        }
-        
-        [data-testid="stMetricLabel"] {
-            color: var(--text-dark);
-            font-weight: 500;
-        }
-        
-        /* Tables */
-        .dataframe {
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        
-        /* Cards */
-        .element-container {
-            border-radius: 8px;
-        }
-        
-        /* Success messages */
-        .stSuccess {
-            background-color: #D1FAE5;
-            color: #065F46;
-            border-radius: 6px;
-            padding: 1rem;
-        }
-        
-        /* Error messages */
-        .stError {
-            background-color: #FEE2E2;
-            color: #991B1B;
-            border-radius: 6px;
-            padding: 1rem;
-        }
-        
-        /* Info messages */
-        .stInfo {
-            background-color: #DBEAFE;
-            color: #1E40AF;
-            border-radius: 6px;
-            padding: 1rem;
-        }
-        
-        /* Divider */
-        hr {
-            margin: 2rem 0;
-            border: none;
-            border-top: 2px solid #E2E8F0;
-        }
-        
-        /* Network graph container */
-        iframe {
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        
-        /* Login form styling */
-        .login-container {
-            max-width: 400px;
-            margin: 0 auto;
-            padding: 2rem;
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        /* Navigation tabs */
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 2rem;
-        }
-        
-        .stTabs [data-baseweb="tab"] {
-            padding: 0.75rem 1.5rem;
-            font-weight: 500;
-            color: var(--text-dark);
-        }
-        
-        .stTabs [aria-selected="true"] {
-            color: var(--primary-navy);
-            border-bottom: 3px solid var(--accent-gold);
-        }
-        
-        /* Responsive design */
-        @media (max-width: 768px) {
-            .main {
-                padding: 1rem;
-            }
-            
-            h1 {
-                font-size: 1.75rem !important;
-            }
-            
-            h2 {
-                font-size: 1.5rem !important;
-            }
-            
-            h3 {
-                font-size: 1.25rem !important;
-            }
-        }
+      :root {
+        --primary-navy: #1E3A8A;
+        --secondary-blue: #3B82F6;
+        --accent-gold: #F59E0B;
+        --bg: #F8FAFC;
+        --card-bg: #FFFFFF;
+        --text: #0F172A;
+        --muted: #64748B;
+        --border: #E2E8F0;
+      }
+
+      /* Page background */
+      [data-testid="stAppViewContainer"] {
+        background: var(--bg);
+      }
+
+      /* Headings */
+      h1, h2, h3 {
+        color: var(--primary-navy) !important;
+        font-weight: 650 !important;
+        letter-spacing: -0.02em;
+      }
+
+      /* Buttons: soften + consistent */
+      .stButton > button {
+        border-radius: 10px;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        padding: 0.5rem 1rem;
+        font-weight: 600;
+      }
+      .stButton > button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(2, 6, 23, 0.08);
+      }
+
+      /* Inputs: consistent border + focus */
+      .stTextInput input, .stTextArea textarea, .stSelectbox select {
+        border-radius: 10px !important;
+        border: 1px solid var(--border) !important;
+      }
+
+      /* Sidebar: color background, don’t force * everything to white */
+      [data-testid="stSidebar"] {
+        background: #0B1F52;
+      }
+      [data-testid="stSidebar"] label,
+      [data-testid="stSidebar"] p,
+      [data-testid="stSidebar"] span,
+      [data-testid="stSidebar"] a,
+      [data-testid="stSidebar"] h1,
+      [data-testid="stSidebar"] h2,
+      [data-testid="stSidebar"] h3 {
+        color: #FFFFFF !important;
+      }
+
+      /* Card utility class (use in st.markdown blocks) */
+      .six-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 1rem 1.25rem;
+        box-shadow: 0 8px 22px rgba(2, 6, 23, 0.06);
+      }
+      .six-card .muted {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      /* Messages: keep subtle */
+      [data-testid="stAlert"] {
+        border-radius: 12px;
+      }
+
+      /* Divider */
+      hr {
+        margin: 1.5rem 0;
+        border: none;
+        border-top: 1px solid var(--border);
+      }
+
+      /* Embedded network iframe */
+      iframe {
+        border-radius: 14px;
+        box-shadow: 0 8px 22px rgba(2, 6, 23, 0.10);
+      }
     </style>
     """, unsafe_allow_html=True)
+
 
 
 def display_metric_card(label, value, icon=""):

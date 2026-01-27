@@ -1,8 +1,10 @@
 import streamlit as st
 
+# from models.response_models import UserResponse
 from styling import apply_custom_css
 from models.input_models import UserCreate, UserUpdate
 from frontend.api.service_locator import get_api_client, get_auth_service, get_user_service
+from frontend.utils import user_label
 
 st.set_page_config(page_title="Edit Profile - SixPaths", page_icon="👤", layout="centered")
 apply_custom_css()
@@ -37,14 +39,14 @@ def _none_if_empty(v: str | None) -> str | None:
     v2 = v.strip()
     return v2 if v2 else None
 
-def user_label(u) -> str:
-    first = (getattr(u, "first_name", "") or "").strip()
-    last = (getattr(u, "last_name", "") or "").strip()
-    email = (getattr(u, "email", "") or "").strip()
-    uid = getattr(u, "id", "")
-    name = f"{first} {last}".strip()
-    base = name or email or f"User {uid}"
-    return f"{base} (id:{uid})"
+# def user_label(u : UserResponse) -> str:
+#     first = (u.first_name or '').strip()
+#     last = (u.last_name or "").strip()
+#     email = (u.email or "").strip()
+#     uid = u.id
+#     name = f"{first} {last}".strip()
+#     base = name or email or f"User {uid}"
+#     return f"{base} (id:{uid})"
 
 def reset_manage_users_state() -> None:
     for k in (
@@ -70,7 +72,7 @@ def load_users_page(limit: int, offset: int):
 def load_user(user_id: str):
     return user_service.get_user(user_id)
 
-def update_user_payload(user_id: str, payload: UserCreate):
+def update_user_payload(user_id: str, payload: UserUpdate):
     """
     Preferred: user_service.update_user accepts a Pydantic model and serializes internally.
     If yours DOESN'T, change the service to do: payload.model_dump(exclude_none=True). [web:517][web:519]
@@ -164,34 +166,43 @@ with tabs[0]:
                 st.error("Failed to change password.")
 
 # =========================================================
-# TAB 1 — Edit Users Profile (PAGINATED)
+# TAB 1 — Manage Users (PRO layout)
 # =========================================================
 with tabs[1]:
     st.subheader("Manage Users")
+    st.caption("Browse users on the left, edit details on the right.")
 
     # init state
-    if "_users_page_limit" not in st.session_state:
-        st.session_state._users_page_limit = 50
-    if "_users_page_offset" not in st.session_state:
-        st.session_state._users_page_offset = 0
-    if "_users_page" not in st.session_state:
-        st.session_state._users_page = []
-    if "_users_has_next" not in st.session_state:
-        st.session_state._users_has_next = False
+    st.session_state.setdefault("_users_page_limit", 50)
+    st.session_state.setdefault("_users_page_offset", 0)
+    st.session_state.setdefault("_users_page", [])
+    st.session_state.setdefault("_users_has_next", False)
+    st.session_state.setdefault("_selected_user_id", None)
+    st.session_state.setdefault("_selected_user", None)
 
-    # controls
-    top1, top2 = st.columns([1, 1])
-    with top1:
-        page_limit = st.selectbox(
-            "Rows per page",
-            options=[25, 50, 100],
-            index=[25, 50, 100].index(st.session_state._users_page_limit),
-        )
-    with top2:
-        current_page_num = (st.session_state._users_page_offset // page_limit) + 1
-        go_page = st.number_input("Go to page", min_value=1, value=current_page_num, step=1)
+    # --- Top controls card ---
+    with st.container(border=True):
+        top = st.columns([1, 1, 2], vertical_alignment="center")
+        with top[0]:
+            page_limit = st.selectbox(
+                "Rows per page",
+                options=[25, 50, 100],
+                index=[25, 50, 100].index(st.session_state._users_page_limit),
+            )
+        with top[1]:
+            current_page_num = (st.session_state._users_page_offset // st.session_state._users_page_limit) + 1
+            go_page = st.number_input("Page", min_value=1, value=int(current_page_num), step=1)
+        with top[2]:
+            r1, r2, r3 = st.columns(3)
+            prev_clicked = r1.button("Previous", width='stretch', disabled=st.session_state._users_page_offset == 0)
+            next_clicked = r2.button("Next", width='stretch', disabled=not st.session_state._users_has_next)
+            reload_clicked = r3.button("Reload", width='stretch')
 
-    # apply limit/page changes
+    if reload_clicked:
+        reset_manage_users_state()
+        st.rerun()
+
+    # apply limit change
     if page_limit != st.session_state._users_page_limit:
         st.session_state._users_page_limit = page_limit
         st.session_state._users_page_offset = 0
@@ -199,6 +210,7 @@ with tabs[1]:
         st.session_state._selected_user_id = None
         st.session_state._selected_user = None
 
+    # apply go-to-page change
     desired_offset = (int(go_page) - 1) * st.session_state._users_page_limit
     if desired_offset != st.session_state._users_page_offset:
         st.session_state._users_page_offset = desired_offset
@@ -206,20 +218,8 @@ with tabs[1]:
         st.session_state._selected_user_id = None
         st.session_state._selected_user = None
 
-    nav1, nav2, nav3 = st.columns([1, 1, 2])
-    with nav1:
-        prev_clicked = st.button("Previous", disabled=st.session_state._users_page_offset == 0)
-    with nav2:
-        next_clicked = st.button("Next", disabled=not st.session_state._users_has_next)
-    with nav3:
-        if st.button("Reload"):
-            reset_manage_users_state()
-            st.rerun()
-
     if prev_clicked:
-        st.session_state._users_page_offset = max(
-            0, st.session_state._users_page_offset - st.session_state._users_page_limit
-        )
+        st.session_state._users_page_offset = max(0, st.session_state._users_page_offset - st.session_state._users_page_limit)
         st.session_state._users_page = []
         st.session_state._selected_user_id = None
         st.session_state._selected_user = None
@@ -251,100 +251,129 @@ with tabs[1]:
 
     users_page = st.session_state._users_page
 
-    st.write(
-        f"Page {(st.session_state._users_page_offset // st.session_state._users_page_limit) + 1} "
-        f"(offset {st.session_state._users_page_offset}, limit {st.session_state._users_page_limit})."
-    )
+    # --- Two panel layout ---
+    left, right = st.columns([2, 3], gap="large")
 
-    if not users_page:
-        st.info("No users found on this page.")
-        st.stop()
+    with left:
+        with st.container(border=True):
+            st.markdown("### Users on this page")
+            st.caption(f"Showing {len(users_page)} users (page {int(go_page)}).")
 
-    id_by_label = {user_label(u): str(getattr(u, "id")) for u in users_page if getattr(u, "id", None) is not None}
-    labels = [""] + sorted(id_by_label.keys())
-
-    selected_label = st.selectbox("Select a user (from this page)", options=labels)
-    selected_id = id_by_label.get(selected_label) if selected_label else None
-
-    if selected_id and selected_id != st.session_state.get("_selected_user_id"):
-        st.session_state._selected_user_id = selected_id
-        st.session_state._selected_user = None
-
-    # load selected user details
-    selected_user = st.session_state.get("_selected_user")
-    if selected_id and selected_user is None:
-        with st.spinner("Loading user details..."):
-            try:
-                selected_user = load_user(selected_id)
-            except Exception:
-                selected_user = None
-        st.session_state._selected_user = selected_user
-
-    if selected_id and not selected_user:
-        st.error("Could not load selected user.")
-        st.stop()
-
-    # edit form
-    if selected_user:
-        st.divider()
-        st.markdown("### Edit selected user")
-
-        with st.form("edit_other_user_form"):
-            col1, col2 = st.columns(2)
-            with col1:
-                o_first = st.text_input("First name", value=getattr(selected_user, "first_name", "") or "")
-                o_last = st.text_input("Last name", value=getattr(selected_user, "last_name", "") or "")
-                o_email = st.text_input("Email", value=getattr(selected_user, "email", "") or "")
-            with col2:
-                o_company = st.text_input("Company", value=getattr(selected_user, "company", "") or "")
-                o_sector = st.text_input("Sector", value=getattr(selected_user, "sector", "") or "")
-                o_phone = st.text_input("Phone", value=getattr(selected_user, "phone", "") or "")
-
-            o_linkedin = st.text_input("LinkedIn URL", value=getattr(selected_user, "linkedin_url", "") or "")
-            save_other = st.form_submit_button("Save user")
-
-        if save_other:
-            payload = UserCreate(
-                first_name=_none_if_empty(o_first) or "",
-                last_name=_none_if_empty(o_last) or "",
-                email=_none_if_empty(o_email),
-                company=_none_if_empty(o_company),
-                sector=_none_if_empty(o_sector),
-                phone=_none_if_empty(o_phone),
-                linkedin_url=_none_if_empty(o_linkedin),
-            )
-
-            with st.spinner("Saving user..."):
-                try:
-                    updated = update_user_payload(str(getattr(selected_user, "id")), payload)
-                except Exception:
-                    updated = None
-
-            if updated:
-                st.success("User updated.")
-                st.session_state._selected_user = updated
-                st.session_state._users_page = []  # reload page list
-                st.rerun()
+            if not users_page:
+                st.info("No users found on this page.")
             else:
-                st.error("Failed to update user.")
+                id_by_label = {
+                    user_label(u): str(getattr(u, "id"))
+                    for u in users_page
+                    if getattr(u, "id", None) is not None
+                }
 
-        st.divider()
-        st.markdown("### Delete user")
-        confirm = st.checkbox("I understand this will permanently delete this user.", value=False)
-        if confirm and st.button("Delete user"):
-            with st.spinner("Deleting user..."):
-                try:
-                    ok = user_service.delete_user(str(getattr(selected_user, "id")))
-                except Exception:
-                    ok = False
-            if ok:
-                st.success("User deleted.")
-                st.session_state._selected_user_id = None
-                st.session_state._selected_user = None
-                st.session_state._users_page = []
-                st.rerun()
+                selected_label = st.selectbox(
+                    "Select a user",
+                    options=[""] + sorted(id_by_label.keys()),
+                )
+                selected_id = id_by_label.get(selected_label) if selected_label else None
+
+                if selected_id and selected_id != st.session_state.get("_selected_user_id"):
+                    st.session_state._selected_user_id = selected_id
+                    st.session_state._selected_user = None
+                    st.rerun()
+
+                with st.expander("Debug (optional)", expanded=False):
+                    st.write(
+                        {
+                            "offset": st.session_state._users_page_offset,
+                            "limit": st.session_state._users_page_limit,
+                            "has_next": st.session_state._users_has_next,
+                        }
+                    )
+
+    with right:
+        with st.container(border=True):
+            st.markdown("### Details & actions")
+
+            selected_id = st.session_state.get("_selected_user_id")
+            if not selected_id:
+                st.info("Pick a user on the left to edit their profile.")
             else:
-                st.error("Failed to delete user.")
+                # Load selected user details
+                selected_user = st.session_state.get("_selected_user")
+                if selected_user is None:
+                    with st.spinner("Loading user details..."):
+                        try:
+                            selected_user = load_user(selected_id)
+                        except Exception:
+                            selected_user = None
+                    st.session_state._selected_user = selected_user
+
+                if not selected_user:
+                    st.error("Could not load selected user.")
+                else:
+                    st.caption(f"Editing: {user_label(selected_user)}")
+
+                    # --- Edit form card ---
+                    with st.form("edit_other_user_form"):
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            o_first = st.text_input("First name", value=getattr(selected_user, "first_name", "") or "")
+                            o_last = st.text_input("Last name", value=getattr(selected_user, "last_name", "") or "")
+                            o_email = st.text_input("Email", value=getattr(selected_user, "email", "") or "")
+                        with c2:
+                            o_company = st.text_input("Company", value=getattr(selected_user, "company", "") or "")
+                            o_sector = st.text_input("Sector", value=getattr(selected_user, "sector", "") or "")
+                            o_phone = st.text_input("Phone", value=getattr(selected_user, "phone", "") or "")
+
+                        o_linkedin = st.text_input("LinkedIn URL", value=getattr(selected_user, "linkedin_url", "") or "")
+                        save_other = st.form_submit_button("Save changes", width='stretch')
+
+                    if save_other:
+                        payload = UserUpdate(
+                            first_name=_none_if_empty(o_first) or "",
+                            last_name=_none_if_empty(o_last) or "",
+                            email=_none_if_empty(o_email),
+                            company=_none_if_empty(o_company),
+                            sector=_none_if_empty(o_sector),
+                            phone=_none_if_empty(o_phone),
+                            linkedin_url=_none_if_empty(o_linkedin),
+                        )
+                        with st.spinner("Saving user..."):
+                            try:
+                                updated = update_user_payload(str(getattr(selected_user, "id")), payload)
+                            except Exception:
+                                updated = None
+
+                        if updated:
+                            st.success("User updated.")
+                            st.session_state._selected_user = updated
+                            st.session_state._users_page = []  # reload list
+                            st.rerun()
+                        else:
+                            st.error("Failed to update user.")
+
+                    # --- Danger zone card ---
+                    st.divider()
+                    st.markdown("### Danger zone")
+                    st.caption("Deleting a user is permanent.")
+
+                    confirm = st.checkbox("I understand this will permanently delete this user.", value=False)
+                    delete_clicked = st.button("Delete user", width='stretch', disabled=not confirm)
+
+                    if delete_clicked:
+                        with st.spinner("Deleting user..."):
+                            try:
+                                ok = user_service.delete_user(str(getattr(selected_user, "id")))
+                            except Exception:
+                                ok = False
+
+                        if ok:
+                            st.success("User deleted.")
+                            st.session_state._selected_user_id = None
+                            st.session_state._selected_user = None
+                            st.session_state._users_page = []
+                            st.rerun()
+                        else:
+                            st.error("Failed to delete user.")
+
 
 # =========================================================
 # TAB 2 — Create New Profile

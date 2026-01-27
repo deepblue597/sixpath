@@ -62,3 +62,19 @@ CREATE INDEX IF NOT EXISTS idx_connections_person2 ON connections(person2_id);
 CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id);
 
 DROP TABLE IF EXISTS users;
+
+
+CREATE TABLE IF NOT EXISTS follow_ups (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    contact_user_id INTEGER NOT NULL,
+    connection_id INTEGER NOT NULL,
+    follow_up_date DATE NOT NULL,
+    notes TEXT,
+    status ENUM('pending', 'completed', 'skipped') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (contact_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (connection_id) REFERENCES connections(id) ON DELETE CASCADE
+)

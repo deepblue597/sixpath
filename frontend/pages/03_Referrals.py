@@ -1,26 +1,43 @@
 """
-Referrals CRUD Page (Streamlit + FastAPI)
+Referrals CRUD Page — SixPaths (clean app layout)
 
-Standalone HTTP helper functions call the backend /referrals routes.
-UI uses Streamlit forms and state; no classes or API clients.
+- Overview: KPI cards + searchable table + pagination
+- Edit: left = pick referral, right = edit form + danger zone
+- Create: clean form card
 """
-import streamlit as st
-import pandas as pd
+
+from __future__ import annotations
+
 from datetime import datetime
-from frontend.api.service_locator import get_referral_service , get_auth_service , get_api_client, get_user_service
+from typing import Any, Dict, List, Optional, Tuple
+
+import pandas as pd
+import streamlit as st
+
+from frontend.api.service_locator import (
+    get_referral_service,
+    get_auth_service,
+    get_api_client,
+    get_user_service,
+)
+from styling import apply_custom_css
+
+# -----------------------------
+# Page setup
+# -----------------------------
 st.set_page_config(page_title="Referrals - SixPaths", page_icon="🎯", layout="wide")
+apply_custom_css()
 
-
-api_client =  get_api_client()
+api_client = get_api_client()
 referral_service = get_referral_service()
 auth_service = get_auth_service()
 user_service = get_user_service()
 
-from styling import apply_custom_css
-apply_custom_css()
-
+# -----------------------------
+# Auth guard
+# -----------------------------
 if not st.session_state.get("logged_in"):
-    st.warning("⚠️ Please login first")
+    st.warning("Please login first")
     st.stop()
 
 token = st.session_state.get("token")
@@ -28,151 +45,262 @@ if not token:
     st.error("Authentication token missing. Please login.")
     st.stop()
 
-st.title("🎯 Referrals Management")
-st.markdown("Track and manage your job referrals from your network")
+api_client.set_token(token)
+try:
+    referral_service.api_client.set_token(token)
+    user_service.api_client.set_token(token)
+except Exception:
+    pass
 
-# Create the three main tabs up-front so they appear immediately under the page title
-tabs = st.tabs(["All Referrals", "Edit / Delete Referral", "Create Referral"])
+# -----------------------------
+# State defaults
+# -----------------------------
+st.session_state.setdefault("referrals_offset", 0)
+st.session_state.setdefault("referrals_limit", 20)
+st.session_state.setdefault("referrals", None)
+st.session_state.setdefault("referrals_has_next", False)
+st.session_state.setdefault("selected_referral_id", None)
+st.session_state.setdefault("all_users", None)
 
-# UI state defaults
-if "referrals_offset" not in st.session_state:
-    st.session_state.referrals_offset = 0
-if "referrals_limit" not in st.session_state:
-    st.session_state.referrals_limit = 20
-if "selected_referral_id" not in st.session_state:
-    st.session_state.selected_referral_id = None
+# -----------------------------
+# Helpers
+# -----------------------------
+def _safe_text(v: Any) -> str:
+    return (v or "").strip() if isinstance(v, str) else (str(v) if v is not None else "")
 
-def _load_referrals():
-    # ensure token set on client
-    api_client.set_token(token)
-    with st.spinner("Loading referrals..."):
-        try:
-            result = referral_service.get_current_user_referrals(st.session_state.referrals_limit, st.session_state.referrals_offset)
-        except Exception as e:
-            st.session_state._referrals_load_info = {"error": str(e)}
-            st.session_state.referrals = []
-            return
-    st.session_state.referrals = result if isinstance(result, list) else []
+def _kpi_card(title: str, value: str, caption: str = "") -> None:
+    st.markdown(
+        f"""
+        <div class="six-card">
+          <div style="font-size:0.85rem;color:#64748B;font-weight:650;">{title}</div>
+          <div style="font-size:1.9rem;font-weight:850;color:#0F172A;line-height:1.15;">{value}</div>
+          <div class="muted">{caption}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-# Note: UI controls (reload, pagination, search) are rendered inside the All Referrals tab below.
-
-# Reuse the tabs created above
-tab_all, tab_edit, tab_create = tabs
-
-with tab_all:
-    # Controls: reload, pagination
-    if st.button("Reload referrals"):
-        _load_referrals()
-
-    if "referrals" not in st.session_state or st.session_state.get("referrals") is None:
-        _load_referrals()
-
-    cols = st.columns([3, 1, 1, 1])
-    with cols[0]:
-        _refs = st.session_state.get('referrals') or []
-        st.markdown(f"**Total loaded:** {len(_refs)}")
-    with cols[1]:
-        if st.button("Prev"):
-            st.session_state.referrals_offset = max(0, st.session_state.referrals_offset - st.session_state.referrals_limit)
-            _load_referrals()
-    with cols[2]:
-        if st.button("Next"):
-            st.session_state.referrals_offset += st.session_state.referrals_limit
-            _load_referrals()
-    with cols[3]:
-        st.selectbox("Per page", options=[10,20,50,100], index=[10,20,50,100].index(st.session_state.referrals_limit), key="_per_page", on_change=lambda: (st.session_state.update({"referrals_limit": int(st.session_state.get("_per_page",20)), "referrals_offset":0}), _load_referrals()))
-
-    st.divider()
-
-    # Search (All tab is view-only: no create/edit controls)
-    search_col = st.columns([4])[0]
-    with search_col:
-        search_q = st.text_input("Search referrals", placeholder="Search by company, position, referrer...")
-
-    def _filtered(refs):
-        if not search_q:
-            return refs
-        q = search_q.lower()
-        return [r for r in refs if q in (r.get('company','') + ' ' + r.get('position','') + ' ' + r.get('referrer_name','') + ' ' + r.get('notes','')).lower()]
-
-    filtered = _filtered(st.session_state.get('referrals') or [])
-
-    st.markdown(f"### 📋 Referrals ({len(filtered)})")
-
-    # build users lookup for referrer names
-    users = st.session_state.get('all_users') or st.session_state.get('_users')
+def _load_users_cached() -> List[Any]:
+    users = st.session_state.get("all_users")
     if users is None:
         try:
-            users = user_service.get_users()
+            users = user_service.get_users() or []
         except Exception:
             users = []
         st.session_state.all_users = users
+    return users
 
-    users_by_id = {}
+def _users_by_id(users: List[Any]) -> Dict[int, str]:
+    out: Dict[int, str] = {}
     for u in users or []:
         try:
-            uid = u.id if not isinstance(u, dict) else u.get('id')
-            first = (u.get('first_name') if isinstance(u, dict) else getattr(u, 'first_name', None)) or ''
-            last = (u.get('last_name') if isinstance(u, dict) else getattr(u, 'last_name', None)) or ''
-            email = (u.get('email') if isinstance(u, dict) else getattr(u, 'email', None)) or ''
+            uid = u.get("id") if isinstance(u, dict) else getattr(u, "id", None)
+            if uid is None:
+                continue
+            first = (u.get("first_name") if isinstance(u, dict) else getattr(u, "first_name", None)) or ""
+            last = (u.get("last_name") if isinstance(u, dict) else getattr(u, "last_name", None)) or ""
+            email = (u.get("email") if isinstance(u, dict) else getattr(u, "email", None)) or ""
             display = f"{first} {last}".strip() or email or f"User {uid}"
-            users_by_id[uid] = display
+            out[int(uid)] = display
         except Exception:
             continue
+    return out
 
-    if filtered:
-        df = pd.DataFrame([{
-            'id': r.get('id'),
-            'referrer': users_by_id.get(r.get('referrer_id')) or r.get('referrer_name') or '',
-            'company': r.get('company'),
-            'position': r.get('position'),
-            'status': r.get('status'),
-            'applied': r.get('application_date')
-        } for r in filtered])
-        st.dataframe(df, width='stretch')
-        # View-only table in All tab; selection/editing handled in Edit tab.
-    else:
-        info_msg = "No referrals found"
-        load_info = st.session_state.get("_referrals_load_info") or {}
-        status = load_info.get("status")
-        text = load_info.get("text")
-        if status is None:
-            st.info(f"{info_msg} — failed to contact server: {text}")
-            url = load_info.get("url")
-            headers = load_info.get("headers")
-            if url:
-                st.write("**Tried URL:**", url)
-            if headers:
-                st.write("**Request headers:**", headers)
-        elif status != 200:
-            st.info(f"{info_msg} — server returned status {status}: {text}")
-            url = load_info.get("url")
-            headers = load_info.get("headers")
-            if url:
-                st.write("**Tried URL:**", url)
-            if headers:
-                st.write("**Request headers:**", headers)
+def _parse_date(d: Any):
+    if not d:
+        return datetime.now().date()
+    try:
+        return datetime.fromisoformat(str(d)).date()
+    except Exception:
+        return datetime.now().date()
+
+def _load_referrals_page(limit: int, offset: int) -> Tuple[List[dict], bool]:
+    """
+    Prefer: backend returns limit+1 so we can detect has_next.
+    If backend returns exactly limit items, we use len==limit heuristic.
+    """
+    api_client.set_token(token)
+    try:
+        rows = referral_service.get_current_user_referrals(limit + 1, offset)  # try limit+1
+        rows = rows if isinstance(rows, list) else []
+        has_next = len(rows) > limit
+        return rows[:limit], has_next
+    except Exception:
+        # fallback to your original call
+        try:
+            rows = referral_service.get_current_user_referrals(limit, offset)
+            rows = rows if isinstance(rows, list) else []
+            has_next = len(rows) == limit
+            return rows, has_next
+        except Exception:
+            return [], False
+
+def _reload_referrals():
+    with st.spinner("Loading referrals..."):
+        rows, has_next = _load_referrals_page(st.session_state.referrals_limit, st.session_state.referrals_offset)
+    st.session_state.referrals = rows
+    st.session_state.referrals_has_next = has_next
+
+def _clear_selection():
+    st.session_state.selected_referral_id = None
+
+def _filter_refs(refs: List[dict], q: str) -> List[dict]:
+    if not q:
+        return refs
+    ql = q.lower()
+    def hay(r: dict) -> str:
+        return " ".join([
+            _safe_text(r.get("company")),
+            _safe_text(r.get("position")),
+            _safe_text(r.get("status")),
+            _safe_text(r.get("notes")),
+            _safe_text(r.get("referrer_name")),
+        ]).lower()
+    return [r for r in refs if ql in hay(r)]
+
+# -----------------------------
+# Header
+# -----------------------------
+st.title("🎯 Referrals")
+st.caption("Track and manage referrals sourced from your network.")
+
+# Ensure loaded once
+if st.session_state.referrals is None:
+    _reload_referrals()
+
+refs = st.session_state.get("referrals") or []
+has_next = bool(st.session_state.get("referrals_has_next", False))
+
+users = _load_users_cached()
+users_by_id = _users_by_id(users)
+
+# KPI row + quick actions
+k1, k2, k3, k4 = st.columns([1, 1, 1, 2], gap="medium")
+with k1:
+    _kpi_card("Loaded", str(len(refs)), "Rows in memory")
+with k2:
+    _kpi_card("Page", str((st.session_state.referrals_offset // st.session_state.referrals_limit) + 1), "Pagination")
+with k3:
+    _kpi_card("Per page", str(st.session_state.referrals_limit), "Limit")
+with k4:
+    with st.container(border=True):
+        st.markdown("**Quick actions**")
+        a, b, c = st.columns(3)
+        if a.button("Reload", type="primary", width='stretch'):
+            _reload_referrals()
+            _clear_selection()
+            st.rerun()
+        if b.button("Clear selection", width='stretch'):
+            _clear_selection()
+            st.rerun()
+        if c.button("Export CSV", width='stretch'):
+            st.session_state["_export_refs"] = True
+
+st.divider()
+
+# Tabs
+tab_all, tab_edit, tab_create = st.tabs(["Overview", "Edit", "Create"])  # [web:733]
+
+# =========================================================
+# TAB: Overview
+# =========================================================
+with tab_all:
+    with st.container(border=True):
+        top = st.columns([2, 2, 1, 1, 1], vertical_alignment="center")  # [web:608]
+        with top[0]:
+            search_q = st.text_input("Search", placeholder="Company, position, status, notes…", key="ref_search")
+        with top[1]:
+            st.caption("Search applies to currently loaded page.")
+        with top[2]:
+            if st.button("Prev", width='stretch', disabled=(st.session_state.referrals_offset == 0)):
+                st.session_state.referrals_offset = max(0, st.session_state.referrals_offset - st.session_state.referrals_limit)
+                _reload_referrals()
+                _clear_selection()
+                st.rerun()
+        with top[3]:
+            if st.button("Next", width='stretch', disabled=(not has_next)):
+                st.session_state.referrals_offset += st.session_state.referrals_limit
+                _reload_referrals()
+                _clear_selection()
+                st.rerun()
+        with top[4]:
+            per_page = st.selectbox("Per page", [10, 20, 50, 100], index=[10, 20, 50, 100].index(st.session_state.referrals_limit))
+            if per_page != st.session_state.referrals_limit:
+                st.session_state.referrals_limit = int(per_page)
+                st.session_state.referrals_offset = 0
+                _reload_referrals()
+                _clear_selection()
+                st.rerun()
+
+    filtered = _filter_refs(refs, st.session_state.get("ref_search", ""))
+
+    with st.container(border=True):
+        st.subheader(f"Referrals ({len(filtered)})")
+
+        if not filtered:
+            st.info("No referrals found.")
         else:
-            st.info(info_msg)
+            df = pd.DataFrame([{
+                "ID": r.get("id"),
+                "Referrer": users_by_id.get(int(r.get("referrer_id") or 0)) or r.get("referrer_name") or "",
+                "Company": r.get("company"),
+                "Position": r.get("position"),
+                "Status": r.get("status"),
+                "Applied": r.get("application_date"),
+            } for r in filtered])
+            st.dataframe(df, width='stretch', hide_index=True)
 
+    if st.session_state.pop("_export_refs", False):
+        df_export = pd.DataFrame(refs)
+        st.download_button(
+            "Download referrals.csv",
+            df_export.to_csv(index=False),
+            "referrals.csv",
+            "text/csv",
+            width='stretch',
+        )
+
+# =========================================================
+# TAB: Edit (two-panel)
+# =========================================================
 with tab_edit:
-    st.markdown("---")
-    st.subheader("Edit / Delete Referral")
+    left, right = st.columns([2, 3], gap="large")  # [web:608]
 
-    # Build selection list from loaded referrals (selection happens here)
-    _refs = st.session_state.get('referrals') or []
-    if not _refs:
-        st.info("No referrals loaded in memory. Use Reload in All Referrals tab.")
-    else:
-        labels = [f"{(users_by_id.get(r.get('referrer_id')) or r.get('referrer_name'))} — {r.get('position')} @ {r.get('company')} (id:{r.get('id')})" for r in _refs]
-        sel = st.selectbox("Select referral to edit", ["-- none --"] + labels, key="_edit_ref_select")
-        editing_id = None
-        if sel and sel != "-- none --":
-            idx = labels.index(sel)
-            editing_id = _refs[idx].get('id')
+    with left:
+        with st.container(border=True):
+            st.subheader("Select referral")
 
-        editing_ref = None
-        if editing_id:
+            if not refs:
+                st.info("No referrals loaded. Go to Overview and press Reload.")
+            else:
+                labels = []
+                id_by_label: Dict[str, int] = {}
+                for r in refs:
+                    rid = r.get("id")
+                    referrer_id = r.get("referrer_id")
+                    referrer = users_by_id.get(int(referrer_id)) if referrer_id else (r.get("referrer_name") or "")
+                    label = f"{referrer} — {r.get('position')} @ {r.get('company')} (id:{rid})"
+                    labels.append(label)
+                    if rid is not None:
+                        id_by_label[label] = int(rid)
+
+                choice = st.selectbox("Referral", ["-- none --"] + labels, key="ref_edit_select")
+                if choice != "-- none --":
+                    st.session_state.selected_referral_id = id_by_label.get(choice)
+
+                if st.button("Clear", width='stretch'):
+                    _clear_selection()
+                    st.rerun()
+
+    with right:
+        with st.container(border=True):
+            st.subheader("Details & actions")
+
+            editing_id = st.session_state.get("selected_referral_id")
+            if not editing_id:
+                st.info("Select a referral on the left to edit.")
+                st.stop()
+
             api_client.set_token(token)
             with st.spinner("Loading referral..."):
                 try:
@@ -180,75 +308,67 @@ with tab_edit:
                 except Exception:
                     editing_ref = None
 
-        if not editing_ref:
-            st.info("Select a referral above to view, edit, or delete.")
-        else:
-            st.markdown("### Editing Referral")
-            st.json(editing_ref)
-            # Delete button
-            if st.button("Delete this referral"):
-                if st.confirmation if hasattr(st, 'confirmation') else True:
-                    with st.spinner("Deleting..."):
-                        try:
-                            ok = referral_service.delete_referral(str(editing_id))
-                        except Exception:
-                            ok = False
-                    if ok:
-                        st.success("✅ Referral deleted")
-                        _load_referrals()
-                    else:
-                        st.error("❌ Failed to delete referral")
+            if not editing_ref:
+                st.error("Failed to load referral details.")
+                st.stop()
 
-            # Inline edit form (prefilled)
+            # Summary (instead of st.json)
+            st.markdown(f"**Referral ID:** {editing_ref.get('id')}")
+            st.caption(f"{_safe_text(editing_ref.get('position'))} @ {_safe_text(editing_ref.get('company'))}")
+
+            with st.expander("Raw data (debug)", expanded=False):
+                st.json(editing_ref)
+
+            st.divider()
+
+            # Build user dropdown once
+            user_options: Dict[str, int] = {}
+            for u in users or []:
+                try:
+                    uid = u.get("id") if isinstance(u, dict) else getattr(u, "id", None)
+                    if uid is None:
+                        continue
+                    first = (u.get("first_name") if isinstance(u, dict) else getattr(u, "first_name", None)) or ""
+                    last = (u.get("last_name") if isinstance(u, dict) else getattr(u, "last_name", "")) or ""
+                    email = (u.get("email") if isinstance(u, dict) else getattr(u, "email", "")) or ""
+                    display = f"{(first + ' ' + last).strip() or email} (id:{uid})"
+                    user_options[display] = int(uid)
+                except Exception:
+                    continue
+
             with st.form("edit_referral_form"):
-                col1, col2 = st.columns(2)
-                with col1:
-                    # referrer selection: use users (people in the system)
-                    user_options = {}
-                    users = st.session_state.get('all_users') or st.session_state.get('_users')
-                    if users is None:
-                        try:
-                            users = user_service.get_users()
-                        except Exception:
-                            users = []
-                        st.session_state.all_users = users
+                c1, c2 = st.columns(2)
 
-                    for u in users or []:
-                        try:
-                            uid = u.get('id') if isinstance(u, dict) else getattr(u, 'id', None)
-                            name = (u.get('first_name') if isinstance(u, dict) else getattr(u, 'first_name', None)) or (u.get('email') if isinstance(u, dict) else getattr(u, 'email', ''))
-                            last = (u.get('last_name') if isinstance(u, dict) else getattr(u, 'last_name', ''))
-                            display = f"{name} {last} (id:{uid})"
-                            user_options[display] = uid
-                        except Exception:
-                            continue
-
+                with c1:
                     if user_options:
-                        default_ref = next((k for k,v in user_options.items() if v==editing_ref.get('referrer_id')), list(user_options.keys())[0])
-                        selected_ref = st.selectbox("Referrer", options=list(user_options.keys()), index=list(user_options.keys()).index(default_ref) if default_ref else 0)
-                        referrer_id = user_options.get(selected_ref)
+                        current_referrer_id = editing_ref.get("referrer_id")
+                        default_label = next((k for k, v in user_options.items() if v == current_referrer_id), list(user_options.keys())[0])
+                        selected_ref = st.selectbox("Referrer", options=list(user_options.keys()), index=list(user_options.keys()).index(default_label))
+                        referrer_id = user_options[selected_ref]
                     else:
-                        st.info("No users available to select as referrer")
-                        referrer_id = st.number_input("Referrer ID", min_value=1, step=1, value=(editing_ref.get('referrer_id') if editing_ref else 0))
+                        referrer_id = st.number_input("Referrer ID", min_value=1, step=1, value=int(editing_ref.get("referrer_id") or 1))
 
-                    company = st.text_input("Company", value=(editing_ref.get('company') if editing_ref else ""))
-                    position = st.text_input("Position", value=(editing_ref.get('position') if editing_ref else ""))
+                    company = st.text_input("Company", value=_safe_text(editing_ref.get("company")))
+                    position = st.text_input("Position", value=_safe_text(editing_ref.get("position")))
 
-                with col2:
+                with c2:
                     status_opts = ["Pending", "Applied", "Under Review", "Interview Scheduled", "Accepted", "Rejected"]
-                    status = st.selectbox("Status", options=status_opts, index=status_opts.index(editing_ref.get('status')) if editing_ref and editing_ref.get('status') in status_opts else 0)
-                    application_date = st.date_input("Application date", value=(datetime.fromisoformat(editing_ref.get('application_date')).date() if editing_ref and editing_ref.get('application_date') else datetime.now().date()))
-                    notes = st.text_area("Notes", value=(editing_ref.get('notes') if editing_ref else ""))
+                    cur_status = editing_ref.get("status")
+                    status_idx = status_opts.index(cur_status) if cur_status in status_opts else 0
+                    status = st.selectbox("Status", options=status_opts, index=status_idx)
 
-                col_a, col_b = st.columns([1,1])
-                with col_a:
-                    save_btn = st.form_submit_button("💾 Save")
-                with col_b:
-                    cancel_btn = st.form_submit_button("❌ Cancel")
+                    application_date = st.date_input("Application date", value=_parse_date(editing_ref.get("application_date")))
+                    notes = st.text_area("Notes", value=_safe_text(editing_ref.get("notes")))
+
+                save_btn = st.form_submit_button("Save changes", type="primary", width='stretch')  # [web:757]
+                cancel_btn = st.form_submit_button("Cancel", width='stretch')  # [web:757]
+
+            if cancel_btn:
+                st.rerun()
 
             if save_btn:
                 if not company or not position:
-                    st.error("Company and Position are required")
+                    st.error("Company and Position are required.")
                 else:
                     payload = {
                         "referrer_id": int(referrer_id),
@@ -256,110 +376,110 @@ with tab_edit:
                         "position": position,
                         "status": status,
                         "application_date": application_date.isoformat(),
-                        "notes": notes or ""
+                        "notes": notes or "",
                     }
                     with st.spinner("Updating referral..."):
                         try:
-                            res = referral_service.update_referral(str(editing_ref.get('id')), payload)
+                            res = referral_service.update_referral(str(editing_ref.get("id")), payload)
                         except Exception:
                             res = None
+
                     if res:
-                        st.success("✅ Referral updated")
-                        _load_referrals()
+                        st.success("Referral updated.")
+                        _reload_referrals()
+                        st.rerun()
                     else:
-                        st.error("❌ Failed to update referral")
+                        st.error("Failed to update referral.")
 
-            if cancel_btn:
-                st.experimental_rerun()
+            st.divider()
+            st.markdown("### Danger zone")
+            confirm = st.checkbox("I understand this will permanently delete this referral.", value=False)
+            if st.button("Delete referral", width='stretch', disabled=not confirm):
+                with st.spinner("Deleting..."):
+                    try:
+                        ok = referral_service.delete_referral(str(editing_id))
+                    except Exception:
+                        ok = False
+                if ok:
+                    st.success("Referral deleted.")
+                    _reload_referrals()
+                    _clear_selection()
+                    st.rerun()
+                else:
+                    st.error("Failed to delete referral.")
 
+# =========================================================
+# TAB: Create
+# =========================================================
 with tab_create:
-    st.markdown("---")
-    st.subheader("Create Referral")
+    with st.container(border=True):
+        st.subheader("Create referral")
+        st.caption("Add a new referral opportunity and link it to a.criteria: a referrer in your network.")
 
-    # Pure create form (no edit prefill)
-    with st.form("referral_create_form"):
-        col1, col2 = st.columns(2)
-        with col1:
-            # referrer selection: use users (people in the system)
-            user_options = {}
-            users = st.session_state.get('all_users') or st.session_state.get('_users')
-            if users is None:
-                try:
-                    users = user_service.get_users()
-                except Exception:
-                    users = []
-                st.session_state.all_users = users
-
-            for u in users or []:
-                try:
-                    uid = u.get('id') if isinstance(u, dict) else getattr(u, 'id', None)
-                    name = (u.get('first_name') if isinstance(u, dict) else getattr(u, 'first_name', None)) or (u.get('email') if isinstance(u, dict) else getattr(u, 'email', ''))
-                    last = (u.get('last_name') if isinstance(u, dict) else getattr(u, 'last_name', ''))
-                    display = f"{name} {last} (id:{uid})"
-                    user_options[display] = uid
-                except Exception:
+        # user dropdown
+        user_options: Dict[str, int] = {}
+        for u in users or []:
+            try:
+                uid = u.get("id") if isinstance(u, dict) else getattr(u, "id", None)
+                if uid is None:
                     continue
+                first = (u.get("first_name") if isinstance(u, dict) else getattr(u, "first_name", None)) or ""
+                last = (u.get("last_name") if isinstance(u, dict) else getattr(u, "last_name", "")) or ""
+                email = (u.get("email") if isinstance(u, dict) else getattr(u, "email", "")) or ""
+                display = f"{(first + ' ' + last).strip() or email} (id:{uid})"
+                user_options[display] = int(uid)
+            except Exception:
+                continue
 
-            if user_options:
-                selected_ref = st.selectbox("Referrer", options=list(user_options.keys()), index=0)
-                referrer_id = user_options.get(selected_ref)
+        with st.form("referral_create_form"):
+            c1, c2 = st.columns(2)
+
+            with c1:
+                if user_options:
+                    selected_ref = st.selectbox("Referrer", options=list(user_options.keys()), index=0)
+                    referrer_id = user_options[selected_ref]
+                else:
+                    st.info("No users available to select as referrer.")
+                    referrer_id = st.number_input("Referrer ID", min_value=1, step=1, value=1)
+
+                company = st.text_input("Company")
+                position = st.text_input("Position")
+
+            with c2:
+                status_opts = ["Pending", "Applied", "Under Review", "Interview Scheduled", "Accepted", "Rejected"]
+                status = st.selectbox("Status", options=status_opts, index=0)
+                application_date = st.date_input("Application date", value=datetime.now().date())
+                notes = st.text_area("Notes")
+
+            create_btn = st.form_submit_button("Create referral", type="primary", width='stretch')  # [web:757]
+            reset_btn = st.form_submit_button("Reset", width='stretch')  # [web:757]
+
+        if reset_btn:
+            st.rerun()
+
+        if create_btn:
+            if not company or not position:
+                st.error("Company and Position are required.")
             else:
-                st.info("No users available to select as referrer")
-                referrer_id = st.number_input("Referrer ID", min_value=1, step=1, value=0)
+                payload = {
+                    "referrer_id": int(referrer_id),
+                    "company": company,
+                    "position": position,
+                    "status": status,
+                    "application_date": application_date.isoformat(),
+                    "notes": notes or "",
+                }
+                with st.spinner("Creating referral..."):
+                    try:
+                        res = referral_service.create_referral(payload)
+                    except Exception:
+                        res = None
+                if res:
+                    st.success("Referral created.")
+                    _reload_referrals()
+                    st.rerun()
+                else:
+                    st.error("Failed to create referral.")
 
-            company = st.text_input("Company", value="")
-            position = st.text_input("Position", value="")
-
-        with col2:
-            status_opts = ["Pending", "Applied", "Under Review", "Interview Scheduled", "Accepted", "Rejected"]
-            status = st.selectbox("Status", options=status_opts, index=0)
-            application_date = st.date_input("Application date", value=datetime.now().date())
-            notes = st.text_area("Notes", value="")
-
-        col_a, col_b = st.columns([1,1])
-        with col_a:
-            save_btn = st.form_submit_button("💾 Create")
-        with col_b:
-            cancel_btn = st.form_submit_button("❌ Cancel")
-
-    if save_btn:
-        if not company or not position:
-            st.error("Company and Position are required")
-        else:
-            payload = {
-                "referrer_id": int(referrer_id),
-                "company": company,
-                "position": position,
-                "status": status,
-                "application_date": application_date.isoformat(),
-                "notes": notes or ""
-            }
-            with st.spinner("Creating referral..."):
-                try:
-                    res = referral_service.create_referral(payload)
-                except Exception:
-                    res = None
-            if res:
-                st.success("✅ Referral created")
-                _load_referrals()
-            else:
-                st.error("❌ Failed to create referral")
-
-    if cancel_btn:
-        st.experimental_rerun()
-
-st.divider()
-
-# Export
-if st.session_state.get('referrals'):
-    df_export = pd.DataFrame(st.session_state.referrals)
-    csv = df_export.to_csv(index=False)
-    st.download_button("⬇️ Download CSV", csv, "referrals.csv", "text/csv")
-
-with st.expander("💡 Referral Tips"):
-    st.markdown("""
-    - Use the Referrer selector to pick a connection from your network
-    - Pagination uses `offset` and `limit` to load subsets
-    - Fill required fields before saving
-    """)
-
+with st.expander("Tips", expanded=False):
+    st.write("Use statuses consistently and keep notes short (what you need to do next).")

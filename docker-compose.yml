@@ -19,11 +19,11 @@ services:
       retries: 5
     restart: unless-stopped
 
-  api:
+  backend:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: sixpath_api
+      dockerfile: apps/backend/Dockerfile
+    container_name: sixpath_backend
     environment:
       # Database configuration
       DB_TYPE: postgresql
@@ -41,15 +41,31 @@ services:
       API_PORT: 8000
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
     networks:
       - sixpath_network
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
-    command: uvicorn api:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+    container_name: sixpath_frontend
+    environment:
+      # Backend API URL
+      API_BASE_URL: http://backend:8000
+      # Streamlit configuration
+      STREAMLIT_SERVER_PORT: 8501
+      STREAMLIT_SERVER_ADDRESS: 0.0.0.0
+    ports:
+      - "8501:8501"
+    networks:
+      - sixpath_network
+    depends_on:
+      - backend
+    restart: unless-stopped
 
 volumes:
   postgres_data:

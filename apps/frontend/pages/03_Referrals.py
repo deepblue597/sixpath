@@ -175,26 +175,26 @@ users = _load_users_cached()
 users_by_id = _users_by_id(users)
 
 # KPI row + quick actions
-k1, k2, k3, k4 = st.columns([1, 1, 1, 2], gap="medium")
+k1, k2, k3 = st.columns([1, 1, 1], gap="medium")
 with k1:
     _kpi_card("Loaded", str(len(refs)), "Rows in memory")
 with k2:
     _kpi_card("Page", str((st.session_state.referrals_offset // st.session_state.referrals_limit) + 1), "Pagination")
 with k3:
     _kpi_card("Per page", str(st.session_state.referrals_limit), "Limit")
-with k4:
-    with st.container(border=True):
-        st.markdown("**Quick actions**")
-        a, b, c = st.columns(3)
-        if a.button("Reload", type="primary", width='stretch'):
-            _reload_referrals()
-            _clear_selection()
-            st.rerun()
-        if b.button("Clear selection", width='stretch'):
-            _clear_selection()
-            st.rerun()
-        if c.button("Export CSV", width='stretch'):
-            st.session_state["_export_refs"] = True
+# with k4:
+#     with st.container(border=True):
+#         st.markdown("**Quick actions**")
+#         a, b, c = st.columns(3)
+#         if a.button("Reload", type="primary", width='stretch'):
+#             _reload_referrals()
+#             _clear_selection()
+#             st.rerun()
+#         if b.button("Clear selection", width='stretch'):
+#             _clear_selection()
+#             st.rerun()
+#         if c.button("Export CSV", width='stretch'):
+#             st.session_state["_export_refs"] = True
 
 st.divider()
 

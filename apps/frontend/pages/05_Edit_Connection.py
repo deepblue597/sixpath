@@ -195,7 +195,7 @@ st.caption("Create, edit, and review relationships in your network.")
 
 connections = _fetch_connections_cached()
 
-k1, k2, k3 = st.columns([1, 1, 2], gap="medium")
+k1, k2 = st.columns([1, 1], gap="medium")
 with k1:
     _kpi_card("Connections", str(len(connections)), "Total relationships")
 with k2:
@@ -205,19 +205,19 @@ with k2:
         if getattr(c, "person1_id", None): ids.add(int(c.person1_id))
         if getattr(c, "person2_id", None): ids.add(int(c.person2_id))
     _kpi_card("People in graph", str(len(ids)), "Unique user IDs in edges")
-with k3:
-    with st.container(border=True):
-        st.markdown("**Quick actions**")
-        a1, a2 = st.columns(2)
-        with a1:
-            if st.button("Reload connections", width='stretch'):
-                st.session_state.connections = None
-                st.rerun()
-        with a2:
-            if st.button("Start new connection", width='stretch'):
-                _reset_wizard()
-                st.session_state.conn_wizard_step = 1
-                st.rerun()
+# with k3:
+#     with st.container(border=True):
+#         st.markdown("**Quick actions**")
+#         a1, a2 = st.columns(2)
+#         with a1:
+#             if st.button("Reload connections", width='stretch'):
+#                 st.session_state.connections = None
+#                 st.rerun()
+#         with a2:
+#             if st.button("Start new connection", width='stretch'):
+#                 _reset_wizard()
+#                 st.session_state.conn_wizard_step = 1
+#                 st.rerun()
 
 st.divider()
 

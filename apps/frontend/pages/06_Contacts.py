@@ -178,23 +178,23 @@ st.caption("Browse your contacts and view profile details.")
 start = st.session_state.contacts_offset + 1
 end = st.session_state.contacts_offset + len(users_page)
 
-k1, k2, k3 = st.columns([1, 1, 2], gap="medium")  # clean KPI row [web:608]
+k1, k2 = st.columns([1, 1], gap="medium")  # clean KPI row [web:608]
 with k1:
     kpi_card("On this page", str(len(users_page)), f"Showing {start}–{end}")
 with k2:
     kpi_card("Filtered", str(len(display_users)), "Matches current filter")
-with k3:
-    with st.container(border=True):  # card container [web:720]
-        st.markdown("**Quick actions**")
-        a1, a2, a3 = st.columns(3)
-        if a1.button("Reload", width='stretch'):
-            clear_page_cache()
-            st.rerun()
-        if a2.button("Clear filter", width='stretch'):
-            st.session_state["__tmp_clear_filter"] = True
-        if a3.button("Clear selection", width='stretch', key="quick_clear_selection"):
-            st.session_state.contacts_selected_id = None
-            st.rerun()
+# with k3:
+#     with st.container(border=True):  # card container [web:720]
+#         st.markdown("**Quick actions**")
+#         a1, a2, a3 = st.columns(3)
+#         if a1.button("Reload", width='stretch'):
+#             clear_page_cache()
+#             st.rerun()
+#         if a2.button("Clear filter", width='stretch'):
+#             st.session_state["__tmp_clear_filter"] = True
+#         if a3.button("Clear selection", width='stretch', key="quick_clear_selection"):
+#             st.session_state.contacts_selected_id = None
+#             st.rerun()
 
 # Clear filter via rerun-friendly pattern
 if st.session_state.pop("__tmp_clear_filter", False):

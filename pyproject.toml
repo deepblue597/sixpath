@@ -22,3 +22,5 @@ dependencies = [
     "streamlit>=1.53.0",
     "uvicorn>=0.40.0",
 ]
+[tool.uv.workspace]
+members = ["packages/*", "apps/*"]

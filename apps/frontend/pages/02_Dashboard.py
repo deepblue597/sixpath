@@ -270,194 +270,194 @@ if arrange_groups and group_color_map:
 # -------------------------
 # Layout: Graph + Details
 # -------------------------
-left, right = st.columns([3, 2], gap="large")
+#left = st.columns([3], gap="large")
 
 # ---- Graph ----
-with left:
-    with st.container(border=True):
-        st.subheader("🌐 Network")
-        st.caption("Use the selector on the right to view a person’s details.")
+# with left:
+with st.container(): # border=True
+    st.subheader("🌐 Network")
+    #st.caption("Use the selector on the right to view a person’s details.")
 
-        net = Network(height=f"{int(graph_height)}px", width="100%", bgcolor="#ffffff", font_color="#222222")
-        net.barnes_hut()
+    net = Network(height=f"{int(graph_height)}px", width="100%", bgcolor="#ffffff", font_color="#222222")
+    net.barnes_hut()
 
-        groups_opts = {
-            gkey: {"color": {"background": col, "border": col}}
-            for gkey, col in group_color_map.items()
+    groups_opts = {
+        gkey: {"color": {"background": col, "border": col}}
+        for gkey, col in group_color_map.items()
+    }
+
+    net.set_options(json.dumps({
+        "groups": groups_opts,
+        "interaction": {"hover": True},
+        "physics": {
+            "enabled": bool(physics_enabled) and not arrange_groups,
+            "barnesHut": {
+                "gravitationalConstant": -20000,
+                "centralGravity": 0.3,
+                "springLength": 95,
+                "springConstant": 0.04
+            },
+            "minVelocity": 0.75
         }
+    }))
 
-        net.set_options(json.dumps({
-            "groups": groups_opts,
-            "interaction": {"hover": True},
-            "physics": {
-                "enabled": bool(physics_enabled) and not arrange_groups,
-                "barnesHut": {
-                    "gravitationalConstant": -20000,
-                    "centralGravity": 0.3,
-                    "springLength": 95,
-                    "springConstant": 0.04
-                },
-                "minVelocity": 0.75
-            }
-        }))
+    center_id = str(getattr(current_user, "id"))
+    center_company = norm_text(getattr(current_user, "company", None))
+    center_sector = norm_text(getattr(current_user, "sector", None))
 
-        center_id = str(getattr(current_user, "id"))
-        center_company = norm_text(getattr(current_user, "company", None))
-        center_sector = norm_text(getattr(current_user, "sector", None))
+    center_group = None
+    if filter_by == "Company":
+        center_group = norm_group_key(center_company)
+    elif filter_by == "Sector":
+        center_group = norm_group_key(center_sector)
 
-        center_group = None
-        if filter_by == "Company":
-            center_group = norm_group_key(center_company)
-        elif filter_by == "Sector":
-            center_group = norm_group_key(center_sector)
+    net.add_node(
+        center_id,
+        label=user_label(current_user) if show_labels else "",
+        title=user_tooltip(current_user),
+        color="#1E90FF",
+        size=30,
+        group=center_group if center_group else None,
+    )
 
-        net.add_node(
-            center_id,
-            label=user_label(current_user) if show_labels else "",
-            title=user_tooltip(current_user),
-            color="#1E90FF",
-            size=30,
-            group=center_group if center_group else None,
-        )
+    existing_node_ids = {center_id}
 
-        existing_node_ids = {center_id}
+    for c in connections:
+        a = getattr(c, "person1_id", None)
+        b = getattr(c, "person2_id", None)
+        if not a or not b:
+            continue
 
-        for c in connections:
-            a = getattr(c, "person1_id", None)
-            b = getattr(c, "person2_id", None)
-            if not a or not b:
+        for endpoint_raw in (a, b):
+            endpoint = str(endpoint_raw)
+            if endpoint in existing_node_ids:
                 continue
 
-            for endpoint_raw in (a, b):
-                endpoint = str(endpoint_raw)
-                if endpoint in existing_node_ids:
-                    continue
+            u = users_by_id.get(endpoint)
+            if u:
+                comp = norm_text(getattr(u, "company", None))
+                sec = norm_text(getattr(u, "sector", None))
+                title = user_tooltip(u)
+                label = user_label(u)
+            else:
+                comp = "Unknown"
+                sec = "Unknown"
+                title = f"User ID {endpoint}"
+                label = endpoint
 
-                u = users_by_id.get(endpoint)
-                if u:
-                    comp = norm_text(getattr(u, "company", None))
-                    sec = norm_text(getattr(u, "sector", None))
-                    title = user_tooltip(u)
-                    label = user_label(u)
-                else:
-                    comp = "Unknown"
-                    sec = "Unknown"
-                    title = f"User ID {endpoint}"
-                    label = endpoint
+            if filter_by == "Company":
+                gkey = norm_group_key(comp)
+                node_color = group_color_map.get(gkey) or hash_color(comp)
+                group = gkey
+            elif filter_by == "Sector":
+                gkey = norm_group_key(sec)
+                node_color = group_color_map.get(gkey) or get_sector_color_normalized(sec) or hash_color(sec)
+                group = gkey
+            else:
+                node_color = hash_color(comp)
+                group = None
 
-                if filter_by == "Company":
-                    gkey = norm_group_key(comp)
-                    node_color = group_color_map.get(gkey) or hash_color(comp)
-                    group = gkey
-                elif filter_by == "Sector":
-                    gkey = norm_group_key(sec)
-                    node_color = group_color_map.get(gkey) or get_sector_color_normalized(sec) or hash_color(sec)
-                    group = gkey
-                else:
-                    node_color = hash_color(comp)
-                    group = None
+            strength = getattr(c, "strength", None) or 1
+            size = 30 if endpoint == center_id else 12 + strength * 1.5
 
-                strength = getattr(c, "strength", None) or 1
-                size = 30 if endpoint == center_id else 12 + strength * 1.5
+            node_kwargs = dict(
+                label=label if show_labels else "",
+                title=title,
+                size=size,
+                group=group if group else None,
+            )
+            if not group:
+                node_kwargs["color"] = node_color
 
-                node_kwargs = dict(
-                    label=label if show_labels else "",
-                    title=title,
-                    size=size,
-                    group=group if group else None,
+            if arrange_groups and group:
+                gx, gy = group_positions.get(group, (0, 0))
+                node_kwargs["x"] = gx + random.randint(-70, 70)
+                node_kwargs["y"] = gy + random.randint(-70, 70)
+                node_kwargs["fixed"] = {"x": True, "y": True}
+                node_kwargs["physics"] = False
+
+            net.add_node(endpoint, **node_kwargs)
+            existing_node_ids.add(endpoint)
+
+        net.add_edge(str(a), str(b), color="#e6e6e6")
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp:
+        net.write_html(tmp.name, open_browser=False, notebook=False)
+        tmp_path = tmp.name
+
+    with open(tmp_path, "r", encoding="utf-8") as f:
+        html = f.read()
+
+    # Ensure consistent size for the mynetwork div
+    desired_style = f"width: 100%; height: {int(graph_height)}px;"
+    html = re.sub(
+        r'(<div[^>]+id="mynetwork"[^>]*style=")([^\"]*)("[^>]*>)',
+        lambda m: m.group(1) + desired_style + m.group(3),
+        html,
+        flags=re.IGNORECASE
+    )
+
+    components.html(html, height=int(graph_height), scrolling=True)
+
+    if show_legend and filter_by != "None" and group_color_map:
+        with st.expander("Legend", expanded=False):
+            items = []
+            for k in sorted(group_display_map.keys(), key=lambda kk: group_display_map[kk]):
+                color = group_color_map[k]
+                label = group_display_map[k]
+                items.append(
+                    f'<div style="display:inline-block;margin-right:12px;margin-bottom:6px;">'
+                    f'<span style="display:inline-block;width:14px;height:14px;background:{color};'
+                    f'border:1px solid #ccc;margin-right:6px;vertical-align:middle;"></span>'
+                    f'{label}</div>'
                 )
-                if not group:
-                    node_kwargs["color"] = node_color
-
-                if arrange_groups and group:
-                    gx, gy = group_positions.get(group, (0, 0))
-                    node_kwargs["x"] = gx + random.randint(-70, 70)
-                    node_kwargs["y"] = gy + random.randint(-70, 70)
-                    node_kwargs["fixed"] = {"x": True, "y": True}
-                    node_kwargs["physics"] = False
-
-                net.add_node(endpoint, **node_kwargs)
-                existing_node_ids.add(endpoint)
-
-            net.add_edge(str(a), str(b), color="#e6e6e6")
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp:
-            net.write_html(tmp.name, open_browser=False, notebook=False)
-            tmp_path = tmp.name
-
-        with open(tmp_path, "r", encoding="utf-8") as f:
-            html = f.read()
-
-        # Ensure consistent size for the mynetwork div
-        desired_style = f"width: 100%; height: {int(graph_height)}px;"
-        html = re.sub(
-            r'(<div[^>]+id="mynetwork"[^>]*style=")([^\"]*)("[^>]*>)',
-            lambda m: m.group(1) + desired_style + m.group(3),
-            html,
-            flags=re.IGNORECASE
-        )
-
-        components.html(html, height=int(graph_height), scrolling=True)
-
-        if show_legend and filter_by != "None" and group_color_map:
-            with st.expander("Legend", expanded=False):
-                items = []
-                for k in sorted(group_display_map.keys(), key=lambda kk: group_display_map[kk]):
-                    color = group_color_map[k]
-                    label = group_display_map[k]
-                    items.append(
-                        f'<div style="display:inline-block;margin-right:12px;margin-bottom:6px;">'
-                        f'<span style="display:inline-block;width:14px;height:14px;background:{color};'
-                        f'border:1px solid #ccc;margin-right:6px;vertical-align:middle;"></span>'
-                        f'{label}</div>'
-                    )
-                st.markdown("<div>" + "".join(items) + "</div>", unsafe_allow_html=True)
+            st.markdown("<div>" + "".join(items) + "</div>", unsafe_allow_html=True)
 
 # ---- Details panel ----
-with right:
-    with st.container(border=True):
-        st.subheader("Person details")
+# with right:
+    # with st.container(border=True):
+    #     st.subheader("Person details")
 
-        # Build a nice selector list (exclude current user)
-        selectable_users = [u for u in all_users if u and str(getattr(u, "id", "")) != str(getattr(current_user, "id", ""))]
-        options = {user_label(u): str(getattr(u, "id")) for u in selectable_users if getattr(u, "id", None) is not None}
+    #     # Build a nice selector list (exclude current user)
+    #     selectable_users = [u for u in all_users if u and str(getattr(u, "id", "")) != str(getattr(current_user, "id", ""))]
+    #     options = {user_label(u): str(getattr(u, "id")) for u in selectable_users if getattr(u, "id", None) is not None}
 
-        selected_label = st.selectbox("Select a person", [""] + sorted(options.keys()))
-        selected_id = options.get(selected_label) if selected_label else None
+    #     selected_label = st.selectbox("Select a person", [""] + sorted(options.keys()))
+    #     selected_id = options.get(selected_label) if selected_label else None
 
-        if not selected_id:
-            st.info("Select someone to view details and quick actions.")
-        else:
-            u = users_by_id.get(str(selected_id))
-            if not u:
-                st.warning("Details not found in the current list.")
-            else:
-                st.markdown(f"### {user_label(u)}")
-                company = norm_text(getattr(u, "company", None))
-                sector = norm_text(getattr(u, "sector", None))
-                email = (getattr(u, "email", "") or "").strip()
-                phone = (getattr(u, "phone", "") or "").strip()
-                linkedin = (getattr(u, "linkedin_url", "") or "").strip()
+    #     if not selected_id:
+    #         st.info("Select someone to view details and quick actions.")
+    #     else:
+    #         u = users_by_id.get(str(selected_id))
+    #         if not u:
+    #             st.warning("Details not found in the current list.")
+    #         else:
+    #             st.markdown(f"### {user_label(u)}")
+    #             company = norm_text(getattr(u, "company", None))
+    #             sector = norm_text(getattr(u, "sector", None))
+    #             email = (getattr(u, "email", "") or "").strip()
+    #             phone = (getattr(u, "phone", "") or "").strip()
+    #             linkedin = (getattr(u, "linkedin_url", "") or "").strip()
 
-                st.caption(" • ".join([x for x in [company, sector] if x and x != "Unknown"]))
+    #             st.caption(" • ".join([x for x in [company, sector] if x and x != "Unknown"]))
 
-                a, b = st.columns(2)
-                with a:
-                    st.markdown("**Email**")
-                    st.write(email or "—")
-                    st.markdown("**Phone**")
-                    st.write(phone or "—")
-                with b:
-                    st.markdown("**Company**")
-                    st.write(company if company != "Unknown" else "—")
-                    st.markdown("**Sector**")
-                    st.write(sector if sector != "Unknown" else "—")
+    #             a, b = st.columns(2)
+    #             with a:
+    #                 st.markdown("**Email**")
+    #                 st.write(email or "—")
+    #                 st.markdown("**Phone**")
+    #                 st.write(phone or "—")
+    #             with b:
+    #                 st.markdown("**Company**")
+    #                 st.write(company if company != "Unknown" else "—")
+    #                 st.markdown("**Sector**")
+    #                 st.write(sector if sector != "Unknown" else "—")
 
-                if linkedin:
-                    st.markdown("**LinkedIn**")
-                    st.write(linkedin)
+    #             if linkedin:
+    #                 st.markdown("**LinkedIn**")
+    #                 st.write(linkedin)
 
-                st.divider()
-                if st.button("Edit this person", width='stretch'):
-                    st.session_state["_selected_user_id"] = str(getattr(u, "id"))
-                    st.switch_page("pages/04_Edit_Profile.py")
+                # st.divider()
+                # if st.button("Edit this person", width='stretch'):
+                #     st.session_state["_selected_user_id"] = str(getattr(u, "id"))
+                #     st.switch_page("pages/04_Edit_Profile.py")

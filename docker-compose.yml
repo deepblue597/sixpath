@@ -33,7 +33,7 @@ services:
       DB_USER: sixpath_user
       DB_PASSWORD: sixpath_password
       # JWT configuration
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-secret-key-change-in-production}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       JWT_ALGORITHM: HS256
       JWT_ACCESS_TOKEN_EXPIRE_MINUTES: 30
       # API configuration

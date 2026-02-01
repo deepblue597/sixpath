@@ -45,5 +45,5 @@ EXPOSE 8501
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8501/_stcore/health || exit 1
 
-# Run Streamlit with uv
-CMD ["uv", "run", "streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# Run Streamlit with uv (port and address configured via environment variables)
+CMD ["uv", "run", "streamlit", "run", "app.py"]

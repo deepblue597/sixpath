@@ -89,4 +89,22 @@ Modern Tech Stack: Built with Streamlit frontend, FastAPI backend, and Pydantic 
 
 ## Getting Started
 
-On first run, create the initial admin account. After that, only login is available to maintain security. The dashboard displays your network graph where you can add connections, organize them by categories, and track your professional relationships visually.
+1. Create a `.env` file based on the `.env.example` file provided. To create a `JWT_SECRET_KEY` run:
+
+```
+openssl rand -hex 64
+```
+
+2. Build the database, backend and frontend using the command
+
+```
+docker compose up --build
+```
+
+3. Accessing the application
+   - **Frontend**: http://localhost:8501
+   - **Backend API**: http://localhost:8000
+   - **API Documentation**: http://localhost:8000/docs
+   - **Database**: localhost:5432
+
+Ports may vary based on the ones you configured on the `docker-compose.yml` file

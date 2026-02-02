@@ -17,10 +17,10 @@ from datetime import datetime
 import streamlit as st
 from styling import apply_custom_css
 
-from frontend.api.service_locator import get_connection_service, get_user_service
+from api.service_locator import get_connection_service, get_user_service
 from models.response_models import UserResponse, ConnectionResponse
 from models.input_models import ConnectionCreate, ConnectionUpdate
-from frontend.utils import user_label
+from utils import user_label
 
 
 # -----------------------------
@@ -45,6 +45,7 @@ if not token:
     st.stop()
 
 current_user = st.session_state.get("user_data")
+#print(current_user)
 if not current_user:
     st.error("Current user not loaded. Please load your profile first.")
     st.stop()

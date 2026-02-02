@@ -22,9 +22,9 @@ import streamlit.components.v1 as components
 from pyvis.network import Network
 
 from styling import apply_custom_css
-from frontend.utils import user_label
+from utils import user_label
 from models.response_models import UserResponse
-from frontend.api.service_locator import (
+from api.service_locator import (
     get_api_client,
     get_auth_service,
     get_connection_service,

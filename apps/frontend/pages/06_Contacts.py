@@ -11,7 +11,7 @@ from __future__ import annotations
 import streamlit as st
 from typing import Any, List, Tuple
 
-from frontend.api.service_locator import get_api_client, get_user_service, get_auth_service
+from api.service_locator import get_api_client, get_user_service, get_auth_service
 from styling import apply_custom_css
 
 # -----------------------------
@@ -296,13 +296,13 @@ with right:
                     st.markdown("**LinkedIn**")
                     st.write(linkedin)
 
-                st.divider()
-                act1, act2 = st.columns(2)
-                if act1.button("Edit", width='stretch'):
-                    st.session_state["_selected_user"] = detail
-                    st.session_state["_selected_user_id"] = getattr(detail, "id", None)
-                    st.switch_page("pages/04_Edit_Profile.py")
+                # st.divider()
+                # act1, act2 = st.columns(2)
+                # if act1.button("Edit", width='stretch'):
+                #     st.session_state["_selected_user"] = detail
+                #     st.session_state["_selected_user_id"] = getattr(detail, "id", None)
+                #     st.switch_page("pages/04_Edit_Profile.py")
 
-                if act2.button("Clear selection", width='stretch', key="detail_clear_selection"):
-                    st.session_state.contacts_selected_id = None
-                    st.rerun()
+                # if act2.button("Clear selection", width='stretch', key="detail_clear_selection"):
+                #     st.session_state.contacts_selected_id = None
+                #     st.rerun()

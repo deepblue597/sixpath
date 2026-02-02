@@ -23,7 +23,11 @@ The dashboard displays your network graph where you can add connections, organiz
 
 The user can also interact with the network visualization
 
-![Network](static/network_visualization.png)
+![Network](static/graph_1.png)
+
+The network can be arranged based on sectors and/or company
+
+![Sector](static/graph_by_sector.png)
 
 ### Profile Page
 

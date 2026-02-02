@@ -279,14 +279,14 @@ with tabs[1]:
                     st.session_state._selected_user = None
                     st.rerun()
 
-                with st.expander("Debug (optional)", expanded=False):
-                    st.write(
-                        {
-                            "offset": st.session_state._users_page_offset,
-                            "limit": st.session_state._users_page_limit,
-                            "has_next": st.session_state._users_has_next,
-                        }
-                    )
+                # with st.expander("Debug (optional)", expanded=False):
+                #     st.write(
+                #         {
+                #             "offset": st.session_state._users_page_offset,
+                #             "limit": st.session_state._users_page_limit,
+                #             "has_next": st.session_state._users_has_next,
+                #         }
+                #     )
 
     with right:
         with st.container(border=True):

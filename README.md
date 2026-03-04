@@ -67,7 +67,7 @@ Referral Tracking: Dedicated page to track and manage referrals between your con
 
 Self-Hosted & Private: Complete control over your data with FastAPI backend and streamlined deployment
 
-Modern Tech Stack: Built with Streamlit frontend, FastAPI backend, and Pydantic models for type-safe API communication
+Modern Tech Stack: Built with React frontend, FastAPI backend, and Pydantic models for type-safe API communication
 
 ## Use Cases
 
@@ -81,7 +81,7 @@ Modern Tech Stack: Built with Streamlit frontend, FastAPI backend, and Pydantic 
 
 ## Tech Stack
 
-- Frontend: Streamlit with PyVis for interactive network graphs
+- Frontend: React (Docker image hosted on Docker Hub)
 
 - Backend: FastAPI with SQLAlchemy ORM
 
@@ -99,11 +99,13 @@ Modern Tech Stack: Built with Streamlit frontend, FastAPI backend, and Pydantic 
 openssl rand -hex 64
 ```
 
-2. Build the database, backend and frontend using the command
+2. Build the database and backend, and pull the frontend image using the command
 
 ```
 docker compose up --build
 ```
+
+The frontend image is pulled automatically from Docker Hub — no local build required.
 
 3. Accessing the application
    - **Frontend**: http://localhost:8501

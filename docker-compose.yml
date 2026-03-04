@@ -50,23 +50,32 @@ services:
     restart: unless-stopped
 
   frontend:
-    build:
-      context: .
-      dockerfile: apps/frontend/Dockerfile
-    container_name: sixpath_frontend
-    environment:
-      # Backend API URL
-      API_BASE_URL: ${API_BASE_URL}
-      # Streamlit configuration
-      STREAMLIT_SERVER_PORT: ${STREAMLIT_SERVER_PORT}
-      STREAMLIT_SERVER_ADDRESS: ${STREAMLIT_SERVER_ADDRESS}
+    image: deepblue597/sixpath-frontend:latest
+    container_name: sixpath-frontend
     ports:
-      - "8501:8501"
-    networks:
-      - sixpath_network
-    depends_on:
-      - backend
+      - "3001:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${API_BASE_URL}
     restart: unless-stopped
+
+  # frontend:
+  #   build:
+  #     context: .
+  #     dockerfile: apps/frontend/Dockerfile
+  #   container_name: sixpath_frontend
+  #   environment:
+  #     # Backend API URL
+  #     API_BASE_URL: ${API_BASE_URL}
+  #     # Streamlit configuration
+  #     STREAMLIT_SERVER_PORT: ${STREAMLIT_SERVER_PORT}
+  #     STREAMLIT_SERVER_ADDRESS: ${STREAMLIT_SERVER_ADDRESS}
+  #   ports:
+  #     - "8501:8501"
+  #   networks:
+  #     - sixpath_network
+  #   depends_on:
+  #     - backend
+  #   restart: unless-stopped
 
 volumes:
   postgres_data:

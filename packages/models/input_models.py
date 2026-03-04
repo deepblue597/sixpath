@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from datetime import date
 
 # Base model with common user fields
 class UserBase(BaseModel):
@@ -10,7 +11,7 @@ class UserBase(BaseModel):
     phone: str | None = None
     linkedin_url: str | None = None
     how_i_know_them: str | None = None
-    when_i_met_them: str | None = None
+    when_i_met_them: date | str | None = None
     notes: str | None = None
     
 # Creation of the User of the app (the authenticated owner)
@@ -34,8 +35,7 @@ class UserUpdate(BaseModel):
     phone: str | None = None
     linkedin_url: str | None = None
     how_i_know_them: str | None = None
-    #TODO: change to Date type
-    when_i_met_them: str | None = None
+    when_i_met_them: date | str | None = None
     notes: str | None = None
 
 

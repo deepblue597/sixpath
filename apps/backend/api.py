@@ -68,7 +68,8 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3001",  # Next.js dev server
+        "http://localhost:3000",  # Next.js dev server
+        "http://localhost:3001",  # Next.js (Docker mapped port)
         "http://localhost:8501",  # Streamlit (if still needed)
     ],
     allow_credentials=True,

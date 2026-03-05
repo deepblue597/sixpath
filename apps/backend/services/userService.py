@@ -57,6 +57,12 @@ class UserService:
             return UserResponse.model_validate(new_user)
         return None
     
+    def get_user_by_username(self, username: str) -> Optional[UserResponse]:
+        user = self.user_dao.get_by_username(username)
+        if user:
+            return UserResponse.model_validate(user)
+        return None
+
     def verify_user_password(self, username: str, password: str) -> Optional[UserResponse]:
         user = self.user_dao.get_by_username(username)
         if user and user.password and pwd_context.verify(password, user.password):

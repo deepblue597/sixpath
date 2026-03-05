@@ -2,11 +2,21 @@
 Router for authentication operations.
 """
 from fastapi import HTTPException, status, APIRouter, Depends
+from pydantic import BaseModel
 from models.response_models import Token
 from utils.dependencies import get_user_service
-from utils.oath2 import create_access_token
+from utils.oath2 import create_access_token, create_password_reset_token, verify_password_reset_token
 from services.userService import UserService
 from fastapi.security.oauth2 import OAuth2PasswordRequestForm
+
+
+class ForgotPasswordRequest(BaseModel):
+    username: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -134,6 +144,44 @@ async def generate_service_token(
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Service error: {str(e)}")
     
+@router.post("/forgot-password", status_code=status.HTTP_200_OK)
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Request a password reset token.
+
+    Looks up the user by username. Always returns 200 to prevent username
+    enumeration. If the username exists, a short-lived reset token (15 min)
+    is returned for the self-hosted flow (no email required).
+    """
+    user = user_service.get_user_by_username(body.username)
+    if not user:
+        # Return a generic message — don't reveal whether the username exists
+        return {"message": "If the username exists, a reset token has been generated."}
+    reset_token = create_password_reset_token(user.id)
+    return {"message": "Reset token generated.", "reset_token": reset_token}
+
+
+@router.post("/reset-password", status_code=status.HTTP_200_OK)
+async def reset_password(
+    body: ResetPasswordRequest,
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Reset the user's password using a valid reset token.
+
+    The token must be a password_reset JWT (issued by /auth/forgot-password)
+    and must not be expired. No authentication required.
+    """
+    user_id = verify_password_reset_token(body.token)
+    success = user_service.change_user_password(user_id, body.new_password)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return {"message": "Password reset successfully."}
+
+
 @router.get("/account-exists", status_code=status.HTTP_200_OK)
 async def account_user_exist(
     user_service: UserService = Depends(get_user_service),

@@ -55,7 +55,9 @@ services:
     ports:
       - "3001:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=${API_BASE_URL}
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    # networks:
+    #   - sixpath_network
     restart: unless-stopped
 
   # frontend:

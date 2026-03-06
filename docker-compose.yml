@@ -21,9 +21,7 @@ services:
     restart: unless-stopped
 
   backend:
-    build:
-      context: .
-      dockerfile: apps/backend/Dockerfile
+    image: deepblue597/sixpath-backend:latest
     container_name: sixpath_backend
     environment:
       # Database configuration

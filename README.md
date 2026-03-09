@@ -99,18 +99,18 @@ Modern Tech Stack: Built with React frontend, FastAPI backend, and Pydantic mode
 openssl rand -hex 64
 ```
 
-2. Build the database and backend, and pull the frontend image using the command
+2. Start the application:
 
 ```
-docker compose up --build
+docker compose up
 ```
 
-The frontend image is pulled automatically from Docker Hub — no local build required.
+All images (frontend, backend, database) are pulled automatically from Docker Hub — no local build required.
 
 3. Accessing the application
-   - **Frontend**: http://localhost:8501
+   - **Frontend**: http://localhost:3001
    - **Backend API**: http://localhost:8000
    - **API Documentation**: http://localhost:8000/docs
    - **Database**: localhost:5432
 
-Ports may vary based on the ones you configured on the `docker-compose.yml` file
+Ports may vary based on the ones you configured in the `docker-compose.yml` file.
